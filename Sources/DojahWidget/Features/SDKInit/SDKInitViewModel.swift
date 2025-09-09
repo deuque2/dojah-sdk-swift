@@ -6,17 +6,18 @@
 //
 
 import Foundation
+import GooglePlaces
+import IQKeyboardManagerSwift
 import UIKit
 import WebKit
-import IQKeyboardManagerSwift
-import GooglePlaces
 
 final class SDKInitViewModel {
     weak var viewProtocol: SDKInitViewProtocol?
     private let widgetID: String
     private var preference: PreferenceProtocol
     private let countriesDatasource: CountriesLocalDatasourceProtocol
-    private let authenticationRemoteDatasource: AuthenticationRemoteDatasourceProtocol
+    private let authenticationRemoteDatasource:
+        AuthenticationRemoteDatasourceProtocol
     private let metadataRemoteDatasource: MetaDataRemoteDatasourceProtocol
     private var authResponse: DJAuthResponse?
     private var preAuthRes: DJPreAuthResponse?
@@ -30,9 +31,12 @@ final class SDKInitViewModel {
         emailAddress: String? = nil,
         extraUserData: ExtraUserData? = nil,
         preference: PreferenceProtocol = PreferenceImpl(),
-        countriesDatasource: CountriesLocalDatasourceProtocol = CountriesLocalDatasource(),
-        authenticationRemoteDatasource: AuthenticationRemoteDatasourceProtocol = AuthenticationRemoteDatasource(),
-        metadataRemoteDatasource: MetaDataRemoteDatasourceProtocol = MetaDataRemoteDatasource()
+        countriesDatasource: CountriesLocalDatasourceProtocol =
+            CountriesLocalDatasource(),
+        authenticationRemoteDatasource: AuthenticationRemoteDatasourceProtocol =
+            AuthenticationRemoteDatasource(),
+        metadataRemoteDatasource: MetaDataRemoteDatasourceProtocol =
+            MetaDataRemoteDatasource()
     ) {
         self.widgetID = widgetID
         self.referenceID = referenceID
@@ -45,16 +49,19 @@ final class SDKInitViewModel {
         self.metadataRemoteDatasource = metadataRemoteDatasource
     }
 
-
-     @MainActor func initialize() {
+    @MainActor func initialize() {
         IQKeyboardManager.shared.enable = true
 
         GMSPlacesClient.provideAPIKey("AIzaSyBCukJV3oUhVHcBFADXIv5lcKMw8QlqitY")
 
-         preference.DJAuthStep = .index
-         if extraUserData != nil{
-             preference.DJExtraUserData = extraUserData!
-         }
+        preference.DJAuthStep = .index
+        if extraUserData != nil {
+            preference.DJExtraUserData = extraUserData!
+        }
+
+        if emailAddress != nil && emailAddress?.isEmpty == false {
+            preference.preAuthEmailAddress = emailAddress!
+        }
 
         viewProtocol?.showLoader(true)
         getUserAgent()
@@ -65,8 +72,10 @@ final class SDKInitViewModel {
         }
 
         guard let countriesJsonData = jsonData(from: "countries"),
-              let governmentIDConfigJsonData = jsonData(from: "government_data_config"),
-              let pricingConfigJsonData = jsonData(from: "pricing_config")
+            let governmentIDConfigJsonData = jsonData(
+                from: "government_data_config"
+            ),
+            let pricingConfigJsonData = jsonData(from: "pricing_config")
         else {
             initializationDidFail()
             return
@@ -77,10 +86,14 @@ final class SDKInitViewModel {
             let dbCountries = countries.map { $0.countryDB }
             try countriesDatasource.saveCountries(dbCountries)
 
-            let governmentIDConfig = try governmentIDConfigJsonData.decode(into: DJGovernmentIDConfig.self)
+            let governmentIDConfig = try governmentIDConfigJsonData.decode(
+                into: DJGovernmentIDConfig.self
+            )
             preference.DJGovernmentIDConfig = governmentIDConfig
 
-            let pricingServicesConfig = try pricingConfigJsonData.decode(into: PricingServicesConfig.self)
+            let pricingServicesConfig = try pricingConfigJsonData.decode(
+                into: PricingServicesConfig.self
+            )
             preference.DJPricingServicesConfig = pricingServicesConfig
 
             preference.DJConfigurationInitialized = true
@@ -100,7 +113,8 @@ final class SDKInitViewModel {
 
     private func preAuthenticate() {
         let params = ["widget_id": widgetID]
-        authenticationRemoteDatasource.getPreAuthenticationInfo(params: params) { [weak self] result in
+        authenticationRemoteDatasource.getPreAuthenticationInfo(params: params)
+        { [weak self] result in
             switch result {
             case let .success(preAuthRes):
                 self?.didGetPreAuthenticationResponse(preAuthRes)
@@ -110,7 +124,9 @@ final class SDKInitViewModel {
         }
     }
 
-    private func didGetPreAuthenticationResponse(_ preAuthRes: DJPreAuthResponse) {
+    private func didGetPreAuthenticationResponse(
+        _ preAuthRes: DJPreAuthResponse
+    ) {
         guard preAuthRes.widget?.pages?.isNotEmpty ?? false else {
             initializationDidFail()
             return
@@ -120,7 +136,8 @@ final class SDKInitViewModel {
         if let appConfig = preAuthRes.appConfig {
             preference.DJAppConfig = appConfig
         }
-        preference.DJCanSeeCountryPage = preAuthRes.widget?.countries?.isNotEmpty ?? false
+        preference.DJCanSeeCountryPage =
+            preAuthRes.widget?.countries?.isNotEmpty ?? false
         authenticate(using: preAuthRes)
     }
 
@@ -130,7 +147,7 @@ final class SDKInitViewModel {
             "public_key": preAuthRes.publicKey.orEmpty,
             "type": "kyc",
             "review_process": preAuthRes.widget?.reviewProcess ?? "Automatic",
-            "steps": createStepsParameters()
+            "steps": createStepsParameters(),
         ]
 
         if let referenceID, referenceID.isNotEmpty {
@@ -141,7 +158,8 @@ final class SDKInitViewModel {
             params["email"] = emailAddress
         }
 
-        authenticationRemoteDatasource.authenticate(params: params) { [weak self] result in
+        authenticationRemoteDatasource.authenticate(params: params) {
+            [weak self] result in
             switch result {
             case let .success(authResponse):
                 self?.didGetAuthenticationResponse(authResponse: authResponse)
@@ -155,7 +173,6 @@ final class SDKInitViewModel {
         }
     }
 
-
     private func didGetAuthenticationResponse(authResponse: DJAuthResponse) {
         guard authResponse.initData.isNotNil else {
             initializationDidFail()
@@ -166,35 +183,42 @@ final class SDKInitViewModel {
         guard let preAuthRes else { return }
         preference.DJRequestHeaders = [
             "authorization": UUID().uuidString,
-            "app-id": preAuthRes.appConfig?.id ?? authResponse.appConfig?.id ?? "",
+            "app-id": preAuthRes.appConfig?.id ?? authResponse.appConfig?.id
+                ?? "",
             "p-key": preAuthRes.publicKey.orEmpty,
             "session": authResponse.sessionID.orEmpty,
-            "reference": authResponse.initData?.data?.referenceID ?? ""
+            "reference": authResponse.initData?.data?.referenceID ?? "",
         ]
-        preference.DJVerificationID = authResponse.initData?.data?.verificationID ?? 0
-        if (referenceID.orEmpty.isNotEmpty || emailAddress.orEmpty.isNotEmpty),
-            let steps = authResponse.initData?.data?.steps?.by(statuses: [.notdone, .pending, .failed]),
-            steps.isNotEmpty {
+        preference.DJVerificationID =
+            authResponse.initData?.data?.verificationID ?? 0
+        if referenceID.orEmpty.isNotEmpty || emailAddress.orEmpty.isNotEmpty,
+            let steps = authResponse.initData?.data?.steps?.by(statuses: [
+                .notdone, .pending, .failed,
+            ]),
+            steps.isNotEmpty
+        {
             preference.DJSteps = steps
         } else {
             preference.DJSteps = authResponse.initData?.data?.steps ?? []
         }
 
         getIPAddress()
-        if(extraUserData?.metadata != nil){
+        if extraUserData?.metadata != nil {
             sendMetaData()
         }
     }
-    
-    
+
     private func sendMetaData() {
-        let params = [
-            "app-id": self.preAuthRes?.appConfig?.id ?? self.authResponse?.appConfig?.id ?? "",
-            "verification_id": preference.DJVerificationID,
-            "meta": extraUserData?.metadata
-        ] as [String : Any]
-        metadataRemoteDatasource.sendMetaData(params: params) { [weak self] result in
-            print ("metaData sent \(result)")
+        let params =
+            [
+                "app-id": self.preAuthRes?.appConfig?.id ?? self.authResponse?
+                    .appConfig?.id ?? "",
+                "verification_id": preference.DJVerificationID,
+                "meta": extraUserData?.metadata,
+            ] as [String: Any]
+        metadataRemoteDatasource.sendMetaData(params: params) {
+            [weak self] result in
+            print("metaData sent \(result)")
         }
     }
 
@@ -204,22 +228,52 @@ final class SDKInitViewModel {
         var currentID = 0
         steps.append(.init(name: .index, id: 0, config: .init()))
 
-        let emailPageConfig = preAuthRes.widget?.pages?.by(pageName: .email)?.config ?? .init()
-        currentID += 1
-        steps.append(.init(name: .email, id: currentID, config: emailPageConfig))
+        if let emailPageConfig = preAuthRes.widget?.pages?.by(pageName: .email)?
+            .config
+        {
+            currentID += 1
+            steps.append(
+                .init(name: .email, id: currentID, config: emailPageConfig)
+            )
+        } else if preAuthRes.widget?.duplicateCheck == true
+            || preAuthRes.widget?.directFeedback == true
+        {
+            let emailPageConfig =
+                preAuthRes.widget?.pages?.by(pageName: .email)?.config
+                ?? .init()
+            currentID += 1
+            steps.append(
+                .init(name: .email, id: currentID, config: emailPageConfig)
+            )
+        }
 
         if (preAuthRes.widget?.countries ?? []).countGreaterThan(1) {
             currentID += 1
-            steps.append(.init(name: .countries, id: currentID, config: .init(configDefault: "")))
+            steps.append(
+                .init(
+                    name: .countries,
+                    id: currentID,
+                    config: .init(configDefault: "")
+                )
+            )
         }
 
         let userDataPage = preAuthRes.widget?.pages?.by(pageName: .userData)
         if let userDataPage {
             currentID += 1
-            steps.append(.init(name: .userData, id: currentID, config: userDataPage.config ?? .init()))
+            steps.append(
+                .init(
+                    name: .userData,
+                    id: currentID,
+                    config: userDataPage.config ?? .init()
+                )
+            )
         }
 
-        let pages = preAuthRes.widget?.pages?.filter { ![.userData, .email].contains($0.pageName) } ?? []
+        let pages =
+            preAuthRes.widget?.pages?.filter {
+                ![.userData, .email].contains($0.pageName)
+            } ?? []
         guard pages.isNotEmpty else {
             return steps.map { $0.dictionary }
         }
@@ -229,18 +283,46 @@ final class SDKInitViewModel {
                 currentID += 1
                 switch pageName {
                 case .governmentData:
-                    steps.append(.init(name: .governmentData, id: currentID, config: page.config ?? .init()))
-                    let verifications = [page.config?.otp ?? false, page.config?.selfie ?? false]
+                    steps.append(
+                        .init(
+                            name: .governmentData,
+                            id: currentID,
+                            config: page.config ?? .init()
+                        )
+                    )
+                    let verifications = [
+                        page.config?.otp ?? false, page.config?.selfie ?? false,
+                    ]
                     if verifications.contains(true) {
                         currentID += 1
-                        steps.append(.init(name: .governmentDataVerification, id: currentID, config: page.config ?? .init()))
+                        steps.append(
+                            .init(
+                                name: .governmentDataVerification,
+                                id: currentID,
+                                config: page.config ?? .init()
+                            )
+                        )
                     }
                 case .id:
-                    steps.append(.init(name: .idOptions, id: currentID, config: .init()))
+                    steps.append(
+                        .init(name: .idOptions, id: currentID, config: .init())
+                    )
                     currentID += 1
-                    steps.append(.init(name: .id, id: currentID, config: page.config ?? .init()))
+                    steps.append(
+                        .init(
+                            name: .id,
+                            id: currentID,
+                            config: page.config ?? .init()
+                        )
+                    )
                 default:
-                    steps.append(.init(name: pageName, id: currentID, config: page.config ?? .init()))
+                    steps.append(
+                        .init(
+                            name: pageName,
+                            id: currentID,
+                            config: page.config ?? .init()
+                        )
+                    )
                 }
             }
         }
@@ -268,9 +350,10 @@ final class SDKInitViewModel {
         }
         let parameters: DJParameters = [
             "ip": ipAddress.ip.orEmpty,
-            "device_info": preference.DJUserAgent
+            "device_info": preference.DJUserAgent,
         ]
-        authenticationRemoteDatasource.saveIPAddress(params: parameters) { [weak self] result in
+        authenticationRemoteDatasource.saveIPAddress(params: parameters) {
+            [weak self] result in
             switch result {
             case let .success(ipAddressResponse):
                 runOnMainThread {
@@ -289,9 +372,10 @@ final class SDKInitViewModel {
         }
 
         guard let dbCountry = countriesDatasource.getCountryByName(country),
-              let preAuthCountries = preference.preAuthResponse?.widget?.countries,
-              preAuthCountries.isNotEmpty,
-              preAuthCountries.contains(dbCountry.iso2)
+            let preAuthCountries = preference.preAuthResponse?.widget?
+                .countries,
+            preAuthCountries.isNotEmpty,
+            preAuthCountries.contains(dbCountry.iso2)
         else {
             viewProtocol?.showCountryNotSupportedError()
             return
@@ -312,8 +396,15 @@ final class SDKInitViewModel {
     }
 
     private func cacheWidgetID() {
-        let widgetIDAlreadyCached = preference.WidgetIDCache.first { $0.widgetID.insensitiveEquals(widgetID) }
-        guard let authResponse, widgetIDAlreadyCached == nil  else { return }
-        preference.WidgetIDCache.append(.init(companyName: authResponse.companyName ?? "", widgetID: widgetID))
+        let widgetIDAlreadyCached = preference.WidgetIDCache.first {
+            $0.widgetID.insensitiveEquals(widgetID)
+        }
+        guard let authResponse, widgetIDAlreadyCached == nil else { return }
+        preference.WidgetIDCache.append(
+            .init(
+                companyName: authResponse.companyName ?? "",
+                widgetID: widgetID
+            )
+        )
     }
 }

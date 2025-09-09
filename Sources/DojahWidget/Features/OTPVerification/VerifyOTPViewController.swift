@@ -65,9 +65,11 @@ final class VerifyOTPViewController: DJBaseViewController {
     ) { [weak self] in
         self?.viewModel.requestOTP()
     }
+    
     private lazy var continueButton = DJButton(title: "Continue", isEnabled: false) { [weak self] in
         self?.viewModel.verifyOTP()
     }
+    
     private lazy var contentStackView = VStackView(
         subviews: [attrLabel, otpView, resendCodeButton, continueButton],
         spacing: 20

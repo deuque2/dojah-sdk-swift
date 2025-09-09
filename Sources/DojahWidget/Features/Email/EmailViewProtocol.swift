@@ -11,4 +11,5 @@ protocol EmailViewProtocol: BaseViewProtocol {
     func showEmailError(_ message: String)
     func hideEmailError()
     func showVerifyController()
+    func prefillEmail(email: String)
 }

@@ -8,6 +8,9 @@
 import Foundation
 
 struct PreferenceImpl: PreferenceProtocol {
+    @UserDefaultPrimitive(key: .DJPreAuthEmailAddress, default: "")
+    var preAuthEmailAddress: String
+    
     @UserDefaultPrimitive(key: .DJVerificationMethod, default: "")
     var DJVerificationMethod: String
     

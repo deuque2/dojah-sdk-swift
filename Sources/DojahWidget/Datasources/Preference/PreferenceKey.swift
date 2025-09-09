@@ -23,6 +23,7 @@ enum PreferenceKey: String {
     case DJCountryCode
     case DJSelectedGovernmentIDVerificationMethod
     case DJOTPVerificationInfo
+    case DJPreAuthEmailAddress
     case WidgetIDCache
     case DJPreAuthResponse
     case DJPricingServicesConfig

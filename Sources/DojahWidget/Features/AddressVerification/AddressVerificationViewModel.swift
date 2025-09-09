@@ -63,7 +63,7 @@ final class AddressVerificationViewModel: BaseViewModel {
         let params: DJParameters = [
             "latitude": currentLocation.coordinate.latitude,
             "longitude": currentLocation.coordinate.longitude,
-            "name": address ?? ""
+            "name": address
         ]
         
         remoteDatasource.sendAddress(type: .userSelected, params: params) { [weak self] result in

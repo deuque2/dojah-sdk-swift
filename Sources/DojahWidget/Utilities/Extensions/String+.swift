@@ -5,11 +5,12 @@
 //  Created by Isaac Iniongun on 25/10/2023.
 //
 
+import CryptoKit
 import Foundation
 import UIKit
 
 extension String {
-    subscript (start: Int, end: Int) -> Substring {
+    subscript(start: Int, end: Int) -> Substring {
         let startPos = index(startIndex, offsetBy: start)
         let endPos: String.Index
         if end > 0 {
@@ -20,7 +21,7 @@ extension String {
         return self[startPos...endPos]
     }
 
-    subscript (pos: Int) -> Character {
+    subscript(pos: Int) -> Character {
         if pos > 0 {
             return self[index(startIndex, offsetBy: pos)]
 
@@ -29,13 +30,29 @@ extension String {
     }
 
     var isNumber: Bool {
+        
         rangeOfCharacter(from: CharacterSet.decimalDigits.inverted) == nil
     }
 
     var isNotNumber: Bool { !isNumber }
 
-    func chunkFormatted(withChunkSize chunkSize: Int = 4, withSeparator separator: Character = " ") -> String {
-        return self.filter { $0 != separator }.chunk(n: chunkSize).map{ String($0) }.joined(separator: String(separator))
+    func chunkFormatted(
+        withChunkSize chunkSize: Int = 4,
+        withSeparator separator: Character = " "
+    ) -> String {
+        return self.filter { $0 != separator }.chunk(n: chunkSize).map {
+            String($0)
+        }.joined(separator: String(separator))
+    }
+    
+    func encrypted() -> String? {
+        let ENC_SECRET = "6543210987654321"
+        
+        do {
+            return try AesEncryption.encrypt(data: self, secret: ENC_SECRET)
+        }catch {
+            return ""
+        }
     }
 
     func formatWith234() -> String {
@@ -68,7 +85,9 @@ extension String {
         }
     }
 
-    func replaceFirstOccurrence(of target: String, with replaceString: String) -> String {
+    func replaceFirstOccurrence(of target: String, with replaceString: String)
+        -> String
+    {
         if let range = range(of: target) {
             return replacingCharacters(in: range, with: replaceString)
         }
@@ -100,7 +119,9 @@ extension String {
         return self
     }
 
-    var jsonBundleURL: URL? { DojahBundle.bundle.url(forResource: self, withExtension: "json") }
+    var jsonBundleURL: URL? {
+        DojahBundle.bundle.url(forResource: self, withExtension: "json")
+    }
 
     func insensitiveEquals(_ other: String) -> Bool {
         localizedCaseInsensitiveCompare(other) == .orderedSame
@@ -130,11 +151,17 @@ extension String {
         spacesRemoved.commasRemoved.replacingOccurrences(of: symbol, with: "")
     }
 
-    var whitespacesAndBNewlinesRemoved: String { trimmingCharacters(in: .whitespacesAndNewlines) }
+    var whitespacesAndBNewlinesRemoved: String {
+        trimmingCharacters(in: .whitespacesAndNewlines)
+    }
 
-    var digitsRemoved: String { components(separatedBy: .decimalDigits).joined() }
+    var digitsRemoved: String {
+        components(separatedBy: .decimalDigits).joined()
+    }
 
-    var whitespacesAndNewlinesRemoved: String { trimmingCharacters(in: .whitespacesAndNewlines).spacesRemoved }
+    var whitespacesAndNewlinesRemoved: String {
+        trimmingCharacters(in: .whitespacesAndNewlines).spacesRemoved
+    }
 
     var spacesRemoved: String { replacingOccurrences(of: " ", with: "") }
 
@@ -146,7 +173,8 @@ extension String {
         let camelCasePattern = "^[a-z][a-zA-Z0-9]*$"
         let camelCaseRegex = try? NSRegularExpression(pattern: camelCasePattern)
         let range = NSRange(location: 0, length: self.utf16.count)
-        return camelCaseRegex?.firstMatch(in: self, options: [], range: range) != nil
+        return camelCaseRegex?.firstMatch(in: self, options: [], range: range)
+            != nil
     }
 
     // Function to convert a camel case string to kebab case
@@ -155,8 +183,14 @@ extension String {
             return self
         }
 
-        let kebabCaseString = self
-            .replacingOccurrences(of: "([a-z])([A-Z])", with: "$1-$2", options: .regularExpression, range: nil)
+        let kebabCaseString =
+            self
+            .replacingOccurrences(
+                of: "([a-z])([A-Z])",
+                with: "$1-$2",
+                options: .regularExpression,
+                range: nil
+            )
             .lowercased()
 
         return kebabCaseString

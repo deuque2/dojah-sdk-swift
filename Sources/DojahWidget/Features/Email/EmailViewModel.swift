@@ -38,6 +38,12 @@ final class EmailViewModel: BaseViewModel {
         }
     }
     
+    func setupPreAuthEmailAddress() {
+        if(preference.preAuthEmailAddress != nil && preference.preAuthEmailAddress.isNotEmpty) {
+            viewProtocol?.prefillEmail(email: preference.preAuthEmailAddress)
+        }
+    }
+    
     func didTapContinue(email: String) {
         self.email = email
         let result = validator.validate(email, for: .email)

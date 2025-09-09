@@ -232,13 +232,13 @@ final class GovtIDCaptureViewModel: BaseViewModel {
             showLoader?(true)
         }
         var params: DJParameters = [
-            "image": idFrontImageData.base64EncodedString(),
+            "image": idFrontImageData.base64EncodedString().encrypted(),
             "param": imageCheckParam,
             "doc_type": docType,
             "continue_verification": imageAnalysisTries >= Constants.imageAnalysisMaxTries
         ]
         if isFrontAndBackID, let idBackImageData {
-            params["image2"] = idBackImageData.base64EncodedString()
+            params["image2"] = idBackImageData.base64EncodedString().encrypted()
         }
         
         livenessRemoteDatasource.performImageCheck(params: params) { [weak self] result in
@@ -257,7 +257,7 @@ final class GovtIDCaptureViewModel: BaseViewModel {
     
     public func autoUploadGovId(imageBase64: String,idType:String,docType:String) {
 
-        var params: DJParameters = [
+        let params: DJParameters = [
             "image": imageBase64,
             "param": idType,
             "doc_type": docType,
@@ -331,7 +331,7 @@ final class GovtIDCaptureViewModel: BaseViewModel {
     private func uploadDocument() {
         guard let fileData = documentURL?.localFileData?.base64EncodedString() ?? idFrontImageData?.base64EncodedString() else { return }
         let params = [
-            "file_base64": fileData,
+            "file_base64": fileData.encrypted(),
             "file_type": documentURL?.pathExtension ?? "image",
             "file_name": documentURL?.lastPathComponent ?? "jpg",
             "title": "Untitled"

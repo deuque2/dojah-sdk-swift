@@ -171,7 +171,7 @@ final class GovtIDCaptureViewController: DJBaseViewController {
                         if let base64 = base64String {
                             print("Base64 String generated")
                             self.viewModel.autoUploadGovId(
-                                imageBase64: base64, idType: manualGovId!.getNgIdType(), docType: imageUrl.hasSuffix(".pdf") ?? false ? "pdf" : "image"
+                                imageBase64: base64, idType: manualGovId!.getNgIdType(), docType: imageUrl.hasSuffix(".pdf") ? "pdf" : "image"
                             )
                         } else {
                             //continue as normal

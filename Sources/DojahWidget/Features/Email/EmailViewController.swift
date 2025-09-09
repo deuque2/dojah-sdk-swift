@@ -31,6 +31,7 @@ final class EmailViewController: DJBaseViewController {
     private lazy var continueButton = DJButton(title: "Continue") { [weak self] in
         self?.didTapContinueButton()
     }
+    
     private lazy var contentStackView = VStackView(
         subviews: [emailTextField, continueButton],
         spacing: 40
@@ -44,6 +45,7 @@ final class EmailViewController: DJBaseViewController {
     
     private func setupUI() {
         viewModel.viewProtocol = self
+        viewModel.setupPreAuthEmailAddress()
         with(contentScrollView) {
             addSubview($0)
             
@@ -72,6 +74,14 @@ final class EmailViewController: DJBaseViewController {
 }
 
 extension EmailViewController: EmailViewProtocol {
+    func prefillEmail(email: String) {
+        
+        print("-------> email --->  ")
+        print(email)
+        emailTextField.textField.text = email
+        emailTextField.textField.isEnabled = false
+    }
+
     func showVerifyController() {
         showOtpVerification()
     }

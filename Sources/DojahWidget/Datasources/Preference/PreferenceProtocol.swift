@@ -9,6 +9,7 @@ import Foundation
 
 protocol PreferenceProtocol {
     var DJWidgetID: String { get set }
+    var preAuthEmailAddress: String { get set }
     var DJConfigurationInitialized: Bool { get set }
     var DJAppConfig: DJAppConfig? { get set }
     var preAuthResponse: DJPreAuthResponse? { get set }

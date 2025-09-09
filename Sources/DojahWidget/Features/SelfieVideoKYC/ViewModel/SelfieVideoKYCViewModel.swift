@@ -42,7 +42,7 @@ final class SelfieVideoKYCViewModel: BaseViewModel {
         guard let imageData else { return }
         showLoader?(true)
         let params = [
-            "image": imageData.base64EncodedString(),
+            "image": imageData.base64EncodedString().encrypted(),
             "image_type": "selfie" //pass 'id' for government-issued-id
         ]
         imageAnalysisTries += 1

@@ -15,10 +15,10 @@ final class OTPVerificationViewModel: BaseViewModel {
         verificationMethod == .phoneNumberOTP
     }
     var verificationInfo: String {
-        let suffix = preference.DJAuthStep.name == .email ? 0 : 4
-        let lastDigits = String(preference.DJOTPVerificationInfo.suffix(suffix))
-        return "XXXXXXX\(lastDigits)"
+        let lastDigits = String(preference.DJOTPVerificationInfo.suffix(4))
+        return preference.DJAuthStep.name == .email ? preference.DJOTPVerificationInfo : "XXXXXXX\(lastDigits)"
     }
+    
     var otp = ""
     private var otpReference = ""
     private var otpRequestChannel: Any {
@@ -42,7 +42,6 @@ final class OTPVerificationViewModel: BaseViewModel {
         showLoader?(true)
         hideMessage()
 
-        print(otpRequestChannel)
         let params: DJParameters = [
             preference.DJAuthStep.name == .email ? "email" : "destination":
                 preference.DJOTPVerificationInfo,
@@ -72,6 +71,8 @@ final class OTPVerificationViewModel: BaseViewModel {
                 self?.showErrorMessage(DJSDKError.OTPCouldNotBeSent.uiMessage)
             }
         }
+        
+        showLoader?(true)
     }
 
     func verifyOTP() {

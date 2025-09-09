@@ -54,7 +54,7 @@ final public class GovtIDOptionsViewController: DJBaseViewController {
             let govId = manualGovId!.getNgIdType()
             let govIdTypes = viewModel.identificationTypes
 
-            if let index = govIdTypes.index(where: {
+            if let index = govIdTypes.firstIndex(where: {
                 $0.idType?.rawValue == govId }
             ) {
                 idTypeView.selectItem(item: govIdTypes[index].name ?? "", index: index)
