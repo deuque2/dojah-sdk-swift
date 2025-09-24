@@ -137,7 +137,7 @@ final class GovtIDCaptureViewModel: BaseViewModel {
         }
         showLoader?(true)
         let params = [
-            "image": imageData.base64EncodedString(),
+            "image": imageData.base64EncodedString().encrypted(),
             "image_type": "id"
         ]
         imageAnalysisTries += 1
@@ -232,7 +232,7 @@ final class GovtIDCaptureViewModel: BaseViewModel {
             showLoader?(true)
         }
         var params: DJParameters = [
-            "image": idFrontImageData.base64EncodedString().encrypted(),
+            "image": idFrontImageData.base64EncodedString().encrypted() ?? "",
             "param": imageCheckParam,
             "doc_type": docType,
             "continue_verification": imageAnalysisTries >= Constants.imageAnalysisMaxTries
@@ -258,7 +258,7 @@ final class GovtIDCaptureViewModel: BaseViewModel {
     public func autoUploadGovId(imageBase64: String,idType:String,docType:String) {
 
         let params: DJParameters = [
-            "image": imageBase64,
+            "image": imageBase64.encrypted(),
             "param": idType,
             "doc_type": docType,
             "continue_verification": false

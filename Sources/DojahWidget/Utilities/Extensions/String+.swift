@@ -48,11 +48,7 @@ extension String {
     func encrypted() -> String? {
         let ENC_SECRET = "6543210987654321"
         
-        do {
-            return try AesEncryption.encrypt(data: self, secret: ENC_SECRET)
-        }catch {
-            return ""
-        }
+        return AesEncryption.encrypt(data: self, secret: ENC_SECRET)
     }
 
     func formatWith234() -> String {

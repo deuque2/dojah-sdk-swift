@@ -105,7 +105,7 @@ final class SelfieVideoKYCViewModel: BaseViewModel {
         imageCheckMaxTries += 1
         guard let imageData else { return }
         let params: DJParameters = [
-            "image": imageData.base64EncodedString(),
+            "image": imageData.base64EncodedString().encrypted(),
             "param": "face", // pass 'NG{country alpha2 code}-PASS' when using passport. this is gotten from the selected id from the identification map
             // pass 'BUSINESS' for business ID
             "selfie_type": "single",
