@@ -49,8 +49,8 @@ Pod::Spec.new do |s|
   # External dependencies equivalent to those in the Package.swift
   s.dependency 'HorizonCalendar', '~> 1.16.0'
   s.dependency 'lottie-ios', '~> 4.5.2'
-  s.dependency 'RealmSwift', '~> 10.52.2'
-  s.static_framework = false
+  # s.dependency 'RealmSwift', '~> 10.52.2'
+  # s.static_framework = false
   s.dependency 'IQKeyboardManagerSwift', '~> 7.1.1'
   s.dependency 'Kingfisher', '~> 7.12.0'
   s.dependency 'GooglePlaces', '~> 8.5.0'
