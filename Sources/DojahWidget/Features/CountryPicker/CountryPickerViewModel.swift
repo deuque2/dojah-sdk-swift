@@ -18,7 +18,7 @@ final class CountryPickerViewModel: BaseViewModel {
     
     init(countriesLocalDatasource: CountriesLocalDatasourceProtocol = CountriesLocalDatasource()) {
         self.countriesLocalDatasource = countriesLocalDatasource
-        //allCountries = countriesLocalDatasource.getCountries()
+        allCountries = countriesLocalDatasource.getCountries()
         countries = allCountries
         super.init()
         preference.DJCountryCode = "NG"
