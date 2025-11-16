@@ -29,5 +29,5 @@ protocol PreferenceProtocol {
     var DJPricingServicesConfig: PricingServicesConfig? { get set }
     var VerificationResultStatus: String { get set }
     var DJExtraUserData: ExtraUserData? { get set }
-
+    var platformSource: String? { get set }
 }

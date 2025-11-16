@@ -23,12 +23,14 @@ final class SDKInitViewModel {
     private var preAuthRes: DJPreAuthResponse?
     private let referenceID: String?
     private let emailAddress: String?
+    private let source: String?
     private var extraUserData: ExtraUserData?
 
     init(
         widgetID: String,
         referenceID: String? = nil,
         emailAddress: String? = nil,
+        source: String? = nil,
         extraUserData: ExtraUserData? = nil,
         preference: PreferenceProtocol = PreferenceImpl(),
         countriesDatasource: CountriesLocalDatasourceProtocol =
@@ -43,6 +45,7 @@ final class SDKInitViewModel {
         self.emailAddress = emailAddress
         self.extraUserData = extraUserData
         self.preference = preference
+        self.source = source ?? "ios_native"
         self.preference.DJWidgetID = widgetID
         self.countriesDatasource = countriesDatasource
         self.authenticationRemoteDatasource = authenticationRemoteDatasource
@@ -55,6 +58,8 @@ final class SDKInitViewModel {
         GMSPlacesClient.provideAPIKey("AIzaSyBCukJV3oUhVHcBFADXIv5lcKMw8QlqitY")
 
         preference.DJAuthStep = .index
+        preference.platformSource = source
+        
         if extraUserData != nil {
             preference.DJExtraUserData = extraUserData!
         }
@@ -146,6 +151,8 @@ final class SDKInitViewModel {
             "app_id": preAuthRes.appConfig?.id ?? "",
             "public_key": preAuthRes.publicKey.orEmpty,
             "type": "kyc",
+            "source": source,
+            "widget_id": widgetID,
             "review_process": preAuthRes.widget?.reviewProcess ?? "Automatic",
             "steps": createStepsParameters(),
         ]
@@ -247,7 +254,8 @@ final class SDKInitViewModel {
             )
         }
 
-        if (preAuthRes.widget?.countries ?? []).countGreaterThan(1) {
+        if (preAuthRes.widget?.countries ?? []).countGreaterThan(0)
+            && ((preAuthRes.widget?.pages?.by(pageName: .governmentData)) != nil) {
             currentID += 1
             steps.append(
                 .init(
