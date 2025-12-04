@@ -50,7 +50,7 @@ Pod::Spec.new do |s|
   s.dependency 'HorizonCalendar', '~> 1.16.0'
   s.dependency 'lottie-ios', '~> 4.5.2'
   s.dependency 'RealmSwift', '~> 10.52.2'
-  # s.static_framework = false
+  s.static_framework = true
   s.dependency 'IQKeyboardManagerSwift', '~> 7.1.1'
   s.dependency 'Kingfisher', '~> 7.12.0'
   s.dependency 'GooglePlaces', '~> 8.5.0'
