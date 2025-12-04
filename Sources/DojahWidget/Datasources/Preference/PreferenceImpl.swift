@@ -8,6 +8,9 @@
 import Foundation
 
 struct PreferenceImpl: PreferenceProtocol {
+    @UserDefaultPrimitive(key: .PlatformSource, default: "ios_native")
+    var platformSource: String?
+    
     @UserDefaultPrimitive(key: .DJPreAuthEmailAddress, default: "")
     var preAuthEmailAddress: String
     
