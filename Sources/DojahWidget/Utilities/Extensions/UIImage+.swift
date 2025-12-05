@@ -8,94 +8,100 @@
 import UIKit
 
 extension UIImage {
+
     @available(iOS 17.0, *)
     static func res(_ res: ImageResource) -> UIImage {
-        UIImage(resource: res)
+        return UIImage(resource: res)
     }
 
     static func res(_ name: String) -> UIImage {
         let snakeName = name.toKebabCase()
-        if #available(iOS 17.0, *) {
-            let imageResource = ImageResource(name: snakeName, bundle: DojahBundle.bundle)
-            let image = UIImage(resource: imageResource)
-            // Use image resource for iOS 17+
-            return image
-        } else {
-            let image = UIImage(named: snakeName,in: DojahBundle.bundle,with: nil)
-            return image ?? UIImage()
+
+        // ✅ First, always preflight using the safe API
+        if let existingImage = UIImage(
+            named: snakeName,
+            in: DojahBundle.bundle,
+            with: nil
+        ) {
+            // ✅ If on iOS 17+, now safely re-load with ImageResource
+            if #available(iOS 17.0, *) {
+                let imageResource = ImageResource(name: snakeName, bundle: DojahBundle.bundle)
+                return UIImage(resource: imageResource) // ✅ Now guaranteed NOT to crash
+            }
+
+            // ✅ For iOS 16 and below
+            return existingImage
         }
 
+        // ✅ Absolute fallback (prevents all crashes)
+        return UIImage()
     }
 
     static func imageWithColor(color: UIColor, size: CGSize) -> UIImage? {
-        let rect = CGRect(x: 0, y: 0, width: size.width, height: size.height)
+        let rect = CGRect(origin: .zero, size: size)
         UIGraphicsBeginImageContextWithOptions(size, false, 0)
         color.setFill()
         UIRectFill(rect)
-        guard let image: UIImage = UIGraphicsGetImageFromCurrentImageContext() else {
-            return nil
-        }
+        let image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
         return image
     }
 
     func withTint(_ color: UIColor, size: CGSize) -> UIImage? {
-        let rect = CGRect(x: 0, y: 0, width: size.width, height: size.height)
+        let rect = CGRect(origin: .zero, size: size)
         UIGraphicsBeginImageContextWithOptions(size, false, 0)
         color.setFill()
         UIRectFill(rect)
-        guard let image: UIImage = UIGraphicsGetImageFromCurrentImageContext() else {
-            return nil
-        }
+        let image = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
         return image
     }
 
     func withColor(_ color: UIColor) -> UIImage? {
-        let maskImage = cgImage!
+        // ✅ SAFE: Prevent cgImage crash
+        guard let maskImage = self.cgImage else {
+            return nil
+        }
 
-        let width = size.width
-        let height = size.height
-        let bounds = CGRect(x: 0, y: 0, width: width, height: height)
+        let bounds = CGRect(origin: .zero, size: size)
 
         let colorSpace = CGColorSpaceCreateDeviceRGB()
-        let bitmapInfo = CGBitmapInfo(rawValue: CGImageAlphaInfo.premultipliedLast.rawValue)
-        let context = CGContext(data: nil, width: Int(width), height: Int(height), bitsPerComponent: 8, bytesPerRow: 0, space: colorSpace, bitmapInfo: bitmapInfo.rawValue)!
+        let bitmapInfo = CGImageAlphaInfo.premultipliedLast.rawValue
+
+        guard let context = CGContext(
+            data: nil,
+            width: Int(size.width),
+            height: Int(size.height),
+            bitsPerComponent: 8,
+            bytesPerRow: 0,
+            space: colorSpace,
+            bitmapInfo: bitmapInfo
+        ) else { return nil }
 
         context.clip(to: bounds, mask: maskImage)
         context.setFillColor(color.cgColor)
         context.fill(bounds)
 
-        if let cgImage = context.makeImage() {
-            let coloredImage = UIImage(cgImage: cgImage)
-            return coloredImage
-        } else {
-            return nil
-        }
+        guard let cgImage = context.makeImage() else { return nil }
+        return UIImage(cgImage: cgImage)
     }
 
-    func withSize(_ newSize: CGSize) -> UIImage {
+    func withSize(_ targetSize: CGSize) -> UIImage {
+        let widthRatio  = targetSize.width / size.width
+        let heightRatio = targetSize.height / size.height
+        let ratio = min(widthRatio, heightRatio)
 
-        let widthRatio  = newSize.width  / size.width
-        let heightRatio = newSize.height / size.height
+        let newSize = CGSize(
+            width: size.width * ratio,
+            height: size.height * ratio
+        )
 
-        // Figure out what our orientation is, and use that to form the rectangle
-        var newSize: CGSize
-        if(widthRatio > heightRatio) {
-            newSize = CGSize(width: size.width * heightRatio, height: size.height * heightRatio)
-        } else {
-            newSize = CGSize(width: size.width * widthRatio,  height: size.height * widthRatio)
-        }
-
-        // This is the rect that we've calculated out and this is what is actually used below
-        let rect = CGRect(x: 0, y: 0, width: newSize.width, height: newSize.height)
-
-        // Actually do the resizing to the rect using the ImageContext stuff
+        let rect = CGRect(origin: .zero, size: newSize)
         UIGraphicsBeginImageContextWithOptions(newSize, false, 1.0)
         draw(in: rect)
         let newImage = UIGraphicsGetImageFromCurrentImageContext()
         UIGraphicsEndImageContext()
 
-        return newImage!
+        return newImage ?? self
     }
 }
