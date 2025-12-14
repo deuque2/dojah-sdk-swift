@@ -45,7 +45,7 @@ final class SDKInitViewModel {
         self.emailAddress = emailAddress
         self.extraUserData = extraUserData
         self.preference = preference
-        self.source = source ?? "ios_native"
+        self.source = source
         self.preference.DJWidgetID = widgetID
         self.countriesDatasource = countriesDatasource
         self.authenticationRemoteDatasource = authenticationRemoteDatasource
@@ -358,6 +358,7 @@ final class SDKInitViewModel {
         }
         let parameters: DJParameters = [
             "ip": ipAddress.ip.orEmpty,
+            "device_fingerprint": DojahDeviceId.get(),
             "device_info": preference.DJUserAgent,
         ]
         authenticationRemoteDatasource.saveIPAddress(params: parameters) {

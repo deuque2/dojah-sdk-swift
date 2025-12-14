@@ -7,6 +7,7 @@
 
 import Foundation
 import UIKit
+import Clarity
 
 public final class DojahWidgetSDK {
     
@@ -17,11 +18,18 @@ public final class DojahWidgetSDK {
         extraUserData: ExtraUserData? = nil,
         source: String? = nil,
         navController: UINavigationController) {
+            
+        let sourceConfig = source ?? "ios_native"
+            
+        // initialise clarity
+        let clarityConfig = ClarityConfig(projectId: "tphsgbjtpp")
+        ClaritySDK.initialize(config: clarityConfig)
+            
         let viewModel = SDKInitViewModel(
             widgetID: widgetID,
             referenceID: referenceID,
             emailAddress: emailAddress,
-            source: source,
+            source: sourceConfig,
             extraUserData: extraUserData,
         )
         let controller = SDKInitViewController(viewModel: viewModel)

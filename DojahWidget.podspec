@@ -54,6 +54,7 @@ Pod::Spec.new do |s|
   s.dependency 'IQKeyboardManagerSwift', '~> 7.1.1'
   s.dependency 'Kingfisher', '~> 7.12.0'
   s.dependency 'GooglePlaces', '~> 8.5.0'
+  s.dependency 'Clarity'
   # s.dependency 'lottie-ios'
 
   # Alternatively, for pre-built frameworks:
