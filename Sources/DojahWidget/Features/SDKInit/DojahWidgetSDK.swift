@@ -24,6 +24,7 @@ public final class DojahWidgetSDK {
         // initialise clarity
         let clarityConfig = ClarityConfig(projectId: "tphsgbjtpp")
         ClaritySDK.initialize(config: clarityConfig)
+        ClaritySDK.setCustomTag(key: "source", value: sourceConfig)
             
         let viewModel = SDKInitViewModel(
             widgetID: widgetID,
