@@ -141,7 +141,8 @@ final class AddressVerificationViewModel: BaseViewModel {
             let params: DJParameters = [
                 "latitude": tmpCurrentLocation!.coordinate.latitude,
                 "longitude": tmpCurrentLocation!.coordinate.longitude,
-                "match": match
+                "match": match,
+                "distance": distanceInMeters
             ]
             
             remoteDatasource.sendAddress(type: .userLocation, params: params) { [weak self] result in
