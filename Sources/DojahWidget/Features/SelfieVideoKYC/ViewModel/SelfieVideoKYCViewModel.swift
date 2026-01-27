@@ -141,7 +141,7 @@ final class SelfieVideoKYCViewModel: BaseViewModel {
         if checkResponse.match ?? false {
             showLoader?(false)
             postEvent(
-                request: .event(name: .stepCompleted, pageName: .selfie, services: pricingServices),
+                request: .event(name: .stepCompleted, pageName: .governmentDataVerification, services: pricingServices),
                 showLoader: false,
                 showError: false
             )
