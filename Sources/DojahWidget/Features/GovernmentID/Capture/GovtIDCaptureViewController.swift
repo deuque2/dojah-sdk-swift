@@ -150,7 +150,7 @@ final class GovtIDCaptureViewController: DJBaseViewController {
         [uploadHintLabel, cameraHintView].centerInSuperview()
         cameraView.fillSuperview(padding: .kinit(allEdges: 3))
         idImageView.fillSuperview(padding: .kinit(allEdges: 3))
-        [primaryButton, secondaryButton].enable(false)
+        primaryButton.enable(false)
         
         bindAttachmentManager()
         
