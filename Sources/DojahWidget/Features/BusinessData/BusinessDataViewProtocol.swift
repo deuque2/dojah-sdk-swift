@@ -9,4 +9,6 @@ import Foundation
 
 protocol BusinessDataViewProtocol: BaseViewProtocol {
     func updateNumberTextfield()
+    func showOrHideBusinessNameView(isHidden: Bool)
+    func showOrhideCompanyTypeView(isHidden: Bool)
 }

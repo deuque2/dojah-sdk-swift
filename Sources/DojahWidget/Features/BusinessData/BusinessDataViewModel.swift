@@ -11,18 +11,34 @@ final class BusinessDataViewModel: BaseViewModel {
     weak var viewProtocol: BusinessDataViewProtocol?
     private let remoteDatasource: BusinessDataRemoteDatasourceProtocol
     var documentTypes = [DJGovernmentID]()
+    var companyTypes = [CompanyType]()
     var selectedDocument: DJGovernmentID?
+    var selectedCompanyType: CompanyType?
     
     init(remoteDatasource: BusinessDataRemoteDatasourceProtocol = BusinessDataRemoteDatasource()) {
         self.remoteDatasource = remoteDatasource
         super.init()
         documentTypes = GovernmentIDFactory.getBusinessDocumentTypes(preference: preference)
+        companyTypes = CompanyType.allCases
     }
     
     func didChooseDocumentType(at index: Int) {
         hideMessage()
         selectedDocument = documentTypes[index]
         viewProtocol?.updateNumberTextfield()
+        
+        if(selectedDocument?.idEnum == "RC-NUMBER") {
+            viewProtocol?.showOrhideCompanyTypeView(isHidden: false)
+            viewProtocol?.showOrHideBusinessNameView(isHidden: true)
+        } else if(selectedDocument?.idEnum == "TIN") {
+            viewProtocol?.showOrhideCompanyTypeView(isHidden: true)
+            viewProtocol?.showOrHideBusinessNameView(isHidden: false)
+        }
+    }
+    
+    func didChooseCompanyType(at index: Int) {
+        hideMessage()
+        selectedCompanyType = companyTypes[index]
     }
     
     func verifyBusiness(name: String, number: String) {
@@ -46,7 +62,8 @@ final class BusinessDataViewModel: BaseViewModel {
         
         let params = [
             businessDataType.verificationRequestParam: number,
-            "company_name": name
+            "company_name": name,
+            "company_type": selectedCompanyType?.serverKey ?? ""
         ]
         
         showLoader?(true)

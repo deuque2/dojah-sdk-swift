@@ -30,21 +30,33 @@ final class BusinessDataViewController: DJBaseViewController {
             self?.viewModel.didChooseDocumentType(at: index)
         }
     )
+    
     private let documentNumberTextField = DJTextField(
         title: "Document Number",
         validationType: .alphaNumeric
     )
+    
+    private lazy var companyTypeVIew = DJPickerView(
+        title: "Company Type",
+        items: CompanyType.titles,
+        itemSelectionHandler: { [weak self] _, index in
+            self?.continueButton.enable()
+            self?.viewModel.didChooseCompanyType(at: index)
+        }
+    )
+    
     private let businessNameTextField = DJTextField(
         title: "Business Name",
         placeholder: "Business name",
         validationType: .name
     )
+    
     private lazy var continueButton = DJButton(title: "Continue", isEnabled: false) { [weak self] in
         self?.didTapContinueButton()
     }
     private lazy var contentStackView = VStackView(
-        subviews: [documentTypeView, documentNumberTextField, businessNameTextField, continueButton],
-        spacing: 40
+        subviews: [documentTypeView, documentNumberTextField, businessNameTextField, companyTypeVIew, continueButton],
+        spacing: 24
     )
     private lazy var contentScrollView = UIScrollView(children: [contentStackView])
     
@@ -76,7 +88,7 @@ final class BusinessDataViewController: DJBaseViewController {
             )
         }
         
-        [documentNumberTextField, businessNameTextField].showViews(false)
+        [documentNumberTextField, businessNameTextField, companyTypeVIew].showViews(false)
         
         viewModel.viewProtocol = self
         
@@ -98,7 +110,7 @@ final class BusinessDataViewController: DJBaseViewController {
             self.documentTypeView.isUserInteractionEnabled = false
             self.documentNumberTextField.isUserInteractionEnabled = false
             documentNumberTextField.showView(true)
-        }else{
+        } else{
             self.documentTypeView.isUserInteractionEnabled = true
             self.documentNumberTextField.isUserInteractionEnabled = true
             documentNumberTextField.showView(false)
@@ -106,7 +118,7 @@ final class BusinessDataViewController: DJBaseViewController {
     }
     
     private func didTapContinueButton() {
-        if [businessNameTextField, documentNumberTextField].areValid {
+        if [documentNumberTextField].areValid {
             viewModel.verifyBusiness(
                 name: businessNameTextField.text,
                 number: documentNumberTextField.text
@@ -117,6 +129,14 @@ final class BusinessDataViewController: DJBaseViewController {
 }
 
 extension BusinessDataViewController: BusinessDataViewProtocol {
+    func showOrHideBusinessNameView(isHidden: Bool) {
+        businessNameTextField.showView(!isHidden)
+    }
+    
+    func showOrhideCompanyTypeView(isHidden: Bool) {
+        companyTypeVIew.showView(!isHidden)
+    }
+    
     func updateNumberTextfield() {
         guard let selectedDocument = viewModel.selectedDocument else { return }
         continueButton.enable()
@@ -126,7 +146,7 @@ extension BusinessDataViewController: BusinessDataViewProtocol {
             $0.title = selectedDocument.idEnum.orEmpty
             $0.showView()
         }
-        businessNameTextField.showView()
+        companyTypeVIew.showView()
     }
     
     func showErrorMessage(_ message: String) {
