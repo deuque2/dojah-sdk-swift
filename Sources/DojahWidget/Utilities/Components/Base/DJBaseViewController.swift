@@ -195,6 +195,11 @@ public class DJBaseViewController: UIViewController {
         let controller = VerifyOTPViewController()
         kpush(controller)
     }
+    
+    func showUtilityBillCapture() {
+        let controller = UtilityBillViewController()
+        kpush(controller)
+    }
 
     private func didChooseLiveness(
         verificationMethod: GovtIDVerificationMethod = .selfie,

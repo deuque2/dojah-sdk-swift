@@ -19,6 +19,7 @@ struct DJPage: Codable {
 
 struct DJPageConfig: Codable {
     let bvn, dl, vnin, nin: Bool?
+    let liveLocation, utilityBill, hideUpload: Bool?
     let otp, selfie, cac, tin, whatsappVerification, whatsappOtp,
         verification: Bool?
     let passport, voter, national: Bool?
@@ -38,6 +39,7 @@ struct DJPageConfig: Codable {
 
     enum CodingKeys: String, CodingKey {
         case bvn, dl, vnin, nin
+        case liveLocation, utilityBill, hideUpload
         case otp, selfie, cac, tin, verification, whatsappVerification, whatsappOtp
         case passport, voter, national
         case type, version, instruction
@@ -61,6 +63,9 @@ struct DJPageConfig: Codable {
         bvn: Bool? = nil,
         dl: Bool? = nil,
         vnin: Bool? = nil,
+        liveLocation: Bool? = nil,
+        utilityBill: Bool? = nil,
+        hideUpload: Bool? = nil,
         nin: Bool? = nil,
         otp: Bool? = nil,
         selfie: Bool? = nil,
@@ -125,6 +130,9 @@ struct DJPageConfig: Codable {
         self.information = information
         self.freeProvider = freeProvider
         self.disposable = disposable
+        self.utilityBill = utilityBill
+        self.hideUpload = hideUpload
+        self.liveLocation = liveLocation
     }
 }
 

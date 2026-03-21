@@ -10,5 +10,7 @@ import GooglePlaces
 
 protocol AddressVerificationViewProtocol: BaseViewProtocol {
     func showPlacesResults()
+    func showProvincesResults()
     func enableContinueButton(_ enable: Bool)
+    func captureUtilityBill()
 }

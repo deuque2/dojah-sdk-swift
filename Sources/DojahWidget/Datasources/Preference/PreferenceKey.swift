@@ -30,4 +30,5 @@ enum PreferenceKey: String {
     case DJPricingServicesConfig
     case VerificationResultStatus
     case ExtraUserData
+    case DJCountryStates
 }

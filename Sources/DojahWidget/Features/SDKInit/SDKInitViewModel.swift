@@ -81,6 +81,13 @@ final class SDKInitViewModel {
                 from: "government_data_config"
             ),
             let pricingConfigJsonData = jsonData(from: "pricing_config")
+                
+        else {
+            initializationDidFail()
+            return
+        }
+        
+        guard let countriesStatesJsonData = jsonData(from: "countries_states")
         else {
             initializationDidFail()
             return
@@ -90,6 +97,12 @@ final class SDKInitViewModel {
             let countries = try countriesJsonData.decode(into: [DJCountry].self)
             let dbCountries = countries.map { $0.countryDB }
             try countriesDatasource.saveCountries(dbCountries)
+            
+            let countriesStates = try countriesStatesJsonData.decode(
+                into: [HomeCountry].self
+            )
+            
+            preference.DJCountryStates = countriesStates
 
             let governmentIDConfig = try governmentIDConfigJsonData.decode(
                 into: DJGovernmentIDConfig.self

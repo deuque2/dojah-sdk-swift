@@ -1,19 +1,19 @@
 //
-//  GovtIDCaptureViewController.swift
+//  CaptureUtilityBillController.swift
+//  DojahWidget
 //
-//
-//  Created by Isaac Iniongun on 29/10/2023.
+//  Created by Sunday on 21/03/2026.
 //
 
 import UIKit
 import AVFoundation
 import MobileCoreServices
 
-final class GovtIDCaptureViewController: DJBaseViewController {
+final class UtilityBillViewController: DJBaseViewController {
     
-    private let viewModel: GovtIDCaptureViewModel
+    private let viewModel: UtilityBillViewModel
     
-    init(viewModel: GovtIDCaptureViewModel = GovtIDCaptureViewModel()) {
+    init(viewModel: UtilityBillViewModel = UtilityBillViewModel()) {
         self.viewModel = viewModel
         super.init(nibName: nil, bundle: nil)
         kviewModel = viewModel
@@ -24,8 +24,7 @@ final class GovtIDCaptureViewController: DJBaseViewController {
         fatalError("init(coder:) has not been implemented")
     }
     
-    private var viewState: GovtIDCaptureViewState { viewModel.viewState }
-    private let verificationMethod: GovtIDVerificationMethod = .govtID
+    private var viewState: UtilityBillCaptureState { viewModel.viewState }
     private let captureSession = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
     private var previewLayer: AVCaptureVideoPreviewLayer?
@@ -80,7 +79,7 @@ final class GovtIDCaptureViewController: DJBaseViewController {
     )
     private let disclaimerItemsView = DisclaimerItemsView(items: DJConstants.idCaptureDisclaimerItems)
     private lazy var hintView = PillIconTextView(
-        text: "Make sure your \(viewModel.idName) is properly placed before you capture.",
+        text: "Make sure your utility bill is properly placed before you capture.",
         font: .light(13),
         icon: .res("greenInfoCircle"),
         iconSize: 18,
@@ -111,7 +110,6 @@ final class GovtIDCaptureViewController: DJBaseViewController {
         super.viewDidLoad()
         viewModel.viewProtocol = self
         setupUI()
-        autoUploadGovIdIfAvailable()
     }
     
     override func viewDidLayoutSubviews() {
@@ -157,30 +155,6 @@ final class GovtIDCaptureViewController: DJBaseViewController {
         
         runAfter { [weak self] in
             self?.setupCameraView()
-        }
-    }
-
-    private func autoUploadGovIdIfAvailable() {
-        let manualGovId = preference.DJExtraUserData?.govId
-        if(manualGovId != nil && manualGovId!.isAnyDataAvailable()){
-            if(manualGovId!.others?.isNotEmpty == true){
-                //handle other id
-            }else{
-                DispatchQueue.main.async {
-                    let imageUrl = manualGovId!.getFirstData()
-                    self.viewModel.downloadImageAndConvertToBase64(from: imageUrl) { base64String in
-                        if let base64 = base64String {
-                            print("Base64 String generated")
-                            self.viewModel.autoUploadGovId(
-                                imageBase64: base64, idType: manualGovId!.getNgIdType(), docType: imageUrl.hasSuffix(".pdf") ? "pdf" : "image"
-                            )
-                        } else {
-                            //continue as normal
-                        }
-                    }
-                    
-                }
-            }
         }
     }
     
@@ -252,6 +226,7 @@ final class GovtIDCaptureViewController: DJBaseViewController {
             .text(imageURL.lastPathComponent, attributes: [.textColor(.aSecondaryLabel), .font(.regular(16)), .alignment(.center)])
             .attributedString
         viewModel.updateImageData(imageData)
+        primaryButton.enable(true)
     }
 
     private func didPickFile(at fileURL: URL) {
@@ -259,45 +234,28 @@ final class GovtIDCaptureViewController: DJBaseViewController {
             .text(fileURL.lastPathComponent, attributes: [.textColor(.aSecondaryLabel), .font(.regular(16)), .alignment(.center)])
             .attributedString
         viewModel.updateIDData(from: fileURL)
+        primaryButton.enable(true)
     }
 
     private func didTapPrimaryButton() {
         switch viewState {
-        case .uploadFront, .uploadBack, .uploadCACDocument, .uploadDocument:
+        case .upload:
             viewModel.didTapContinue()
-        case .captureFront, .captureBack, .captureCACDocument, .captureDocument:
+        case .capture:
             capturePhoto()
-        case .previewFront, .previewBack, .previewCACDocument, .previewDocument:
+        case .preview:
             viewModel.didTapContinue()
         }
     }
 
     private func didTapSecondaryButton() {
         switch viewState {
-        case .uploadFront:
-            viewModel.viewState = .captureFront
-        case .uploadBack:
-            viewModel.viewState = .captureBack
-        case .captureFront:
-            viewModel.viewState = .uploadFront
-        case .captureBack:
-            viewModel.viewState = .uploadBack
-        case .previewFront:
-            viewModel.viewState = .captureFront
-        case .previewBack:
-            viewModel.viewState = .captureBack
-        case .captureCACDocument:
-            viewModel.viewState = .uploadCACDocument
-        case .uploadCACDocument:
-            viewModel.viewState = .captureCACDocument
-        case .previewCACDocument:
-            viewModel.viewState = .captureCACDocument
-        case .captureDocument:
-            viewModel.viewState = .uploadDocument
-        case .uploadDocument:
-            viewModel.viewState = .captureDocument
-        case .previewDocument:
-            viewModel.viewState = .captureDocument
+        case .upload:
+            viewModel.viewState = .capture
+        case .capture:
+            viewModel.viewState = .upload
+        case .preview:
+            viewModel.viewState = .capture
         }
         updateUI()
     }
@@ -329,7 +287,7 @@ final class GovtIDCaptureViewController: DJBaseViewController {
 
 }
 
-extension GovtIDCaptureViewController: GovtIDCaptureViewProtocol {
+extension UtilityBillViewController: UtilityBillViewProtocol {
     func showIDImageError(message: String) {
         with(cameraHintView) {
             $0.showView()
@@ -350,17 +308,15 @@ extension GovtIDCaptureViewController: GovtIDCaptureViewProtocol {
             secondaryButton.title = $0.secondaryButtonTitle
 
             switch $0 {
-            case .uploadFront, .uploadCACDocument, .uploadDocument:
+            case .upload:
                 startCaptureSession(false)
                 [cameraContainerView, cameraView, cameraHintView, hintView, idImageView, disclaimerItemsView].showViews(false)
                 uploadView.showView()
-            case .uploadBack:
-                uploadHintLabel.attributedText = uploadHintAttributedText
-            case .captureFront, .captureBack, .captureCACDocument, .captureDocument:
+            case .capture:
                 [cameraView, cameraHintView, hintView, cameraContainerView].showViews()
                 [idImageView, disclaimerItemsView, uploadView].showViews(false)
                 startCaptureSession()
-            case .previewFront, .previewBack, .previewCACDocument, .previewDocument:
+            case .preview:
                 startCaptureSession(false)
                 [cameraView, cameraHintView, hintView].showViews(false)
                 [idImageView, disclaimerItemsView].showViews()
@@ -377,7 +333,7 @@ extension GovtIDCaptureViewController: GovtIDCaptureViewProtocol {
     }
 }
 
-extension GovtIDCaptureViewController: AVCapturePhotoCaptureDelegate {
+extension UtilityBillViewController: AVCapturePhotoCaptureDelegate {
     public func photoOutput(_ output: AVCapturePhotoOutput, didFinishProcessingPhoto photo: AVCapturePhoto, error: Error?) {
         if let imageData = photo.fileDataRepresentation(), let uiImage = UIImage(data: imageData) {
             viewModel.updateImageData(imageData)

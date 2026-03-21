@@ -8,6 +8,9 @@
 import Foundation
 
 struct PreferenceImpl: PreferenceProtocol {
+    @UserDefaultCodable(key: .DJCountryStates, default: nil)
+    var DJCountryStates: [HomeCountry]?
+    
     @UserDefaultPrimitive(key: .PlatformSource, default: "ios_native")
     var platformSource: String?
     

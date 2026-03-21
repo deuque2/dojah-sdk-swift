@@ -14,6 +14,13 @@ final class AddressVerificationViewModel: BaseViewModel {
     weak var viewProtocol: AddressVerificationViewProtocol?
     var selectedPlace: GMSPlace?
     var currentLocation: CLLocation?
+    var states: [State] = []
+    var provinces: [String] = []
+    var filteredProvinces: [String] = []
+    
+    private var selectedState: State?
+    var selectedProvince: String?
+    
     private lazy var autocompleteSessionToken = GMSAutocompleteSessionToken()
     private lazy var placesClient = GMSPlacesClient.shared()
     var placePredictions = [GMSAutocompletePrediction]()
@@ -21,10 +28,42 @@ final class AddressVerificationViewModel: BaseViewModel {
     init(remoteDatasource: AddressVerificationRemoteDatasourceProtocol = AddressVerificationRemoteDatasource()) {
         self.remoteDatasource = remoteDatasource
         super.init()
+        let countryStates = super.preference.DJCountryStates ?? []
+        let countryIsoCode = super.preference.DJIPCountry ?? ""
+        
+        if !countryStates.isEmpty {
+            if let matchingCountry = countryStates.first(where: { $0.code2 == countryIsoCode }) {
+                self.states = matchingCountry.states
+            }
+        }
     }
     
+    func onStateSelected(_ index: Int) {
+        selectedState = states[index]
+        provinces = selectedState?.subdivision ?? []
+        filteredProvinces = provinces
+        selectedProvince = nil
+    }
     
-    func didTapContinue() {
+    func filterProvinces(_ searchText: String) {
+        guard !searchText.isEmpty else {
+            filteredProvinces = provinces
+            runOnMainThread { [weak self] in
+                self?.viewProtocol?.showProvincesResults()
+            }
+            return
+        }
+        
+        filteredProvinces = provinces.filter { 
+            $0.lowercased().contains(searchText.lowercased())
+        }
+        
+        runOnMainThread { [weak self] in
+            self?.viewProtocol?.showProvincesResults()
+        }
+    }
+    
+    func didTapContinue(lga: String, landmark: String? = nil) {
         hideMessage()
         guard let selectedPlace else {
             showErrorMessage("Choose a valid address")
@@ -36,7 +75,10 @@ final class AddressVerificationViewModel: BaseViewModel {
         let params: DJParameters = [
             "latitude": selectedPlace.coordinate.latitude,
             "longitude": selectedPlace.coordinate.longitude,
-            "name": selectedPlace.formattedAddress ?? ""
+            "name": selectedPlace.formattedAddress ?? "",
+            "state": selectedState?.name ?? "",
+            "lga": lga,
+            "landmark": landmark
         ]
         
         remoteDatasource.sendAddress(type: .userSelected, params: params) { [weak self] result in
@@ -52,7 +94,7 @@ final class AddressVerificationViewModel: BaseViewModel {
         }
     }
        
-    func sendManualAddress(address: String) {
+    func sendManualAddress(address: String, lga: String, landmark: String? = nil) {
         hideMessage()
         guard let currentLocation else {
             showErrorMessage("No valid address is passed")
@@ -64,7 +106,10 @@ final class AddressVerificationViewModel: BaseViewModel {
         let params: DJParameters = [
             "latitude": currentLocation.coordinate.latitude,
             "longitude": currentLocation.coordinate.longitude,
-            "name": address
+            "name": address,
+            "state": selectedState?.name ?? "",
+            "lga": "",
+            "landmark": landmark
         ]
         
         remoteDatasource.sendAddress(type: .userSelected, params: params) { [weak self] result in
@@ -168,8 +213,16 @@ final class AddressVerificationViewModel: BaseViewModel {
             return
         }
         postStepEvent(name: .stepCompleted)
-        runAfter { [weak self] in
-            self?.setNextAuthStep()
+        
+        if preference.DJAuthStep.config?.utilityBill == true {
+            runOnMainThread {
+               _ = self.viewProtocol?.captureUtilityBill()
+            }
+        }
+        else {
+            runAfter { [weak self] in
+                self?.setNextAuthStep()
+            }
         }
     }
     
