@@ -109,24 +109,28 @@ final class GovernmentDataViewController: DJBaseViewController {
             let items = viewModel.governmentIDs.names
             let symbols = self.viewModel.governmentIDs.symbols
             
+            var idNumber = ""
+            
             if(manualSelectGovData?.bvn?.isNotEmpty == true){
                 let index = symbols.firstIndex(of: "bvn") ?? 0
                 self.govtIDView.selectItem(item: items[index],index:index)
-                self.govtIDNumberTextField.text = manualSelectGovData?.bvn ?? ""
+                idNumber = manualSelectGovData?.bvn ?? ""
             }else  if(manualSelectGovData?.dl?.isNotEmpty == true){
                 let index = symbols.firstIndex(of: "dl") ?? 0
                 self.govtIDView.selectItem(item: items[index],index:index)
-                self.govtIDNumberTextField.text = manualSelectGovData?.dl ?? ""
+                idNumber = manualSelectGovData?.dl ?? ""
             }else  if(manualSelectGovData?.nin?.isNotEmpty == true){
                 let index = symbols.firstIndex(of: "nin") ?? 0
                 self.govtIDView.selectItem(item: items[index],index:index)
-                self.govtIDNumberTextField.text = manualSelectGovData?.nin ?? ""
+                idNumber = manualSelectGovData?.nin ?? ""
             }else  if(manualSelectGovData?.vnin?.isNotEmpty == true){
                 let index = symbols.firstIndex(of: "vnin") ?? 0
                 self.govtIDView.selectItem(item: items[index],index:index)
-                self.govtIDNumberTextField.text = manualSelectGovData?.vnin ?? ""
+                idNumber = manualSelectGovData?.vnin ?? ""
             }
             
+            self.govtIDNumberTextField.text = idNumber
+            self.viewModel.idNumber = idNumber
             self.govtIDView.isUserInteractionEnabled = false
             self.govtIDNumberTextField.isUserInteractionEnabled = false
             govtIDNumberTextField.showView(true)
