@@ -75,13 +75,13 @@ final class GovtIDCaptureViewModel: BaseViewModel {
                 showToast(message: "Capture or choose a valid image", type: .error)
                 return
             }
-            analyseImage(idFrontImageData)
+            processIdImage()
         case .previewBack:
             guard let idBackImageData else {
                 showToast(message: "Capture or choose a valid image", type: .error)
                 return
             }
-            analyseImage(idBackImageData)
+            processIdImage()
         case .previewCACDocument, .uploadCACDocument:
             makeCheckRequest()
         case .previewDocument, .uploadDocument:
@@ -105,7 +105,9 @@ final class GovtIDCaptureViewModel: BaseViewModel {
     }
     
     func updateIDData(from fileURL: URL) {
-        docType = "pdf"
+        let ext = fileURL.pathExtension.lowercased()
+        let imageExtensions: Set<String> = ["jpg", "jpeg", "png", "heic", "heif", "gif", "bmp", "tiff", "tif", "webp"]
+        docType = imageExtensions.contains(ext) ? "image" : "pdf"
         if pageName == .additionalDocument {
             documentURL = fileURL
             return
@@ -122,36 +124,6 @@ final class GovtIDCaptureViewModel: BaseViewModel {
         }
     }
     
-    private func analyseImage(_ imageData: Data) {
-        if imageAnalysisTries >= Constants.imageAnalysisMaxTries {
-            postEvent(
-                request: .event(name: .stepFailed, pageName: pageName),
-                didSucceed: { [weak self] _ in
-                    self?.showErrorMessage("No ID Detected & Max tries exceeded")
-                },
-                didFail: { [weak self] _ in
-                    self?.showErrorMessage("No ID Detected & Max tries exceeded")
-                }
-            )
-            return
-        }
-        showLoader?(true)
-        let params = [
-            "image": imageData.base64EncodedString().encrypted(),
-            "image_type": "id"
-        ]
-        imageAnalysisTries += 1
-        livenessRemoteDatasource.performImageAnalysis(params: params) { [weak self] result in
-            self?.showLoader?(false)
-            switch result {
-            case let .success(response):
-                self?.didGetImageAnalysisResponse(response)
-            case let .failure(error):
-                self?.imageAnalysisOrCheckOrDocumentUploadDidFail(error)
-            }
-        }
-    }
-    
     private func imageAnalysisOrCheckOrDocumentUploadDidFail(_ error: DJSDKError) {
         postStepFailedEvent()
         if [.imageCheckOrAnalysisError, .govtIDCouldNotBeCaptured].contains(error) {
@@ -161,26 +133,12 @@ final class GovtIDCaptureViewModel: BaseViewModel {
         }
     }
     
-    private func didGetImageAnalysisResponse(_ response: EntityResponse<ImageAnalysisResponse>) {
+    private func processIdImage() {
         if (selectedID.idType?.isNGNIN == true) || isBusinessID {
             makeCheckRequest()
             return
         }
         
-        guard response.entity?.id?.details?.idCards != nil ||
-              response.entity?.id?.details?.passport != nil ||
-              response.entity?.id?.details?.document != nil
-        else {
-            runOnMainThread { [weak self] in
-                guard let self else { return }
-                if [.uploadFront, .uploadBack].contains(self.viewState) {
-                    showToast(message: "No ID detected", type: .error)
-                } else {
-                    self.viewProtocol?.showIDImageError(message: "No ID detected")
-                }
-            }
-            return
-        }
         if isFrontAndBackID {
             updateViewState()
         } else {
@@ -228,9 +186,7 @@ final class GovtIDCaptureViewModel: BaseViewModel {
             showToast(message: "Capture or choose a valid image", type: .error)
             return
         }
-        if isDocumentUpload {
-            showLoader?(true)
-        }
+        showLoader?(true)
         var params: DJParameters = [
             "image": idFrontImageData.base64EncodedString().encrypted() ?? "",
             "param": imageCheckParam,
@@ -294,6 +250,7 @@ final class GovtIDCaptureViewModel: BaseViewModel {
         }
         
         if checkResponse.match ?? false {
+            showLoader?(true)
             checkRequestDidSucceed()
         } else {
             showLoader?(false)
