@@ -18,12 +18,48 @@ final class CountryPickerViewModel: BaseViewModel {
     
     init(countriesLocalDatasource: CountriesLocalDatasourceProtocol = CountriesLocalDatasource()) {
         self.countriesLocalDatasource = countriesLocalDatasource
-        allCountries = countriesLocalDatasource.getCountries()
-        countries = allCountries
+        // Initialize simple stored properties before using self
+        self.allCountries = []
+        self.countries = []
         super.init()
+
+        // Compute iso codes without capturing self in a closure
+        let isoCodes: [String] = {
+            guard let pages = preference.preAuthResponse?.widget?.pages as? [DJPage] else { return ["ng"] }
+            let regex = try? NSRegularExpression(pattern: "^([a-z]{2})(?:-|[A-Z])", options: [])
+            var unique: Set<String> = []
+            let encoder = JSONEncoder()
+            guard let jsonData = try? encoder.encode(pages),
+                  let jsonArray = try? JSONSerialization.jsonObject(with: jsonData) as? [[String: Any]] else { return [] }
+            for pageDict in jsonArray {
+                guard let pageName = pageDict["page"] as? String, pageName == "government-data" else { continue }
+                guard let config = pageDict["config"] as? [String: Any] else { continue }
+                for (key, value) in config {
+                    if let boolValue = value as? Bool, boolValue {
+                        let match = regex?.firstMatch(in: key, options: [], range: NSRange(location: 0, length: key.utf16.count))
+                        let code: String
+                        if let match = match, let range = Range(match.range(at: 1), in: key) {
+                            code = String(key[range])
+                        } else {
+                            code = "ng"
+                        }
+                        unique.insert(code.lowercased())
+                    }
+                }
+            }
+            return Array(unique)
+        }()
+
+        // Now filter countries using the computed iso codes
+        let fetched = countriesLocalDatasource.getCountries()
+        self.allCountries = fetched.filter { country in
+            isoCodes.contains { $0.caseInsensitiveCompare(country.iso2) == .orderedSame }
+        }
+        self.countries = self.allCountries
+
         preference.DJCountryCode = "NG"
     }
-    
+
     func filterCountries(_ text: String) {
         if text.isEmpty {
             countries = allCountries
@@ -86,3 +122,4 @@ final class CountryPickerViewModel: BaseViewModel {
         )
     }
 }
+

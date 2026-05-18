@@ -188,7 +188,7 @@ final class AddressVerificationViewModel: BaseViewModel {
             let params: DJParameters = [
                 "latitude": tmpCurrentLocation!.coordinate.latitude,
                 "longitude": tmpCurrentLocation!.coordinate.longitude,
-                "match": true,
+                "match": match,
                 "distance": distanceInMeters
             ]
             
@@ -196,7 +196,12 @@ final class AddressVerificationViewModel: BaseViewModel {
                 self?.showLoader?(false)
                 switch result {
                 case let .success(response):
-                    self?.didSendCurrentLocationAddress(response)
+                    if(match) {
+                        self?.didSendCurrentLocationAddress(response)
+                    }
+                    else {
+                        self?.postStepEvent(name: .stepFailed)
+                    }
                 case let .failure(error):
                     self?.postStepEvent(name: .stepFailed)
                     self?.showErrorMessage(error.uiMessage)

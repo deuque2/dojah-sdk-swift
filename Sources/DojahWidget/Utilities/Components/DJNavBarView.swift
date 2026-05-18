@@ -75,7 +75,8 @@ final class DJNavBarView: BaseView {
 
     private func setAppImage() {
         if let appLogoURL = preference.DJAppConfig?.logo {
-            appImageView.setImageFromURL(appLogoURL, placeholder: .res("circleIcon"))
+            appImageView.setImageFromURL(appLogoURL)
+            appImageView.contentMode = .scaleAspectFit
         }
     }
 
