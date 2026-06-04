@@ -17,6 +17,12 @@ struct DJPage: Codable {
     }
 }
 
+struct DJPageQuestion: Codable, Equatable {
+    let text: String?
+    let type: String?
+    let options: [String]?
+}
+
 struct DJPageConfig: Codable {
     let bvn, dl, vnin, nin: Bool?
     let liveLocation, utilityBill, hideUpload: Bool?
@@ -36,6 +42,8 @@ struct DJPageConfig: Codable {
     let configDefault: String?
     let information: String?
     let freeProvider, disposable: Bool?
+    let questions: [DJPageQuestion]?
+    let titleText: String?
 
     enum CodingKeys: String, CodingKey {
         case bvn, dl, vnin, nin
@@ -57,6 +65,8 @@ struct DJPageConfig: Codable {
         case configDefault = "default"
         case information
         case freeProvider, disposable
+        case questions
+        case titleText = "title"
     }
 
     init(
@@ -95,7 +105,9 @@ struct DJPageConfig: Codable {
         configDefault: String? = nil,
         information: String? = nil,
         freeProvider: Bool? = nil,
-        disposable: Bool? = nil
+        disposable: Bool? = nil,
+        questions: [DJPageQuestion]? = nil,
+        titleText: String? = nil
     ) {
         self.bvn = bvn
         self.dl = dl
@@ -133,6 +145,8 @@ struct DJPageConfig: Codable {
         self.utilityBill = utilityBill
         self.hideUpload = hideUpload
         self.liveLocation = liveLocation
+        self.questions = questions
+        self.titleText = titleText
     }
 }
 
@@ -141,3 +155,4 @@ extension [DJPage] {
         first { $0.pageName == pageName }
     }
 }
+

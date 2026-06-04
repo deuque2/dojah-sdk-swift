@@ -178,6 +178,9 @@ public class DJBaseViewController: UIViewController {
         case .id, .businessID, .additionalDocument:
             let controller = GovtIDCaptureViewController()
             kpush(controller)
+        case .customQuestions:
+            let vc = CustomQuestionsViewController()
+            kpush(vc)
         case .index:
             break
         case .idOptions:

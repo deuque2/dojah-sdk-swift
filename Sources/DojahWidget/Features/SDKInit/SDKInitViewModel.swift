@@ -393,12 +393,15 @@ final class SDKInitViewModel {
             return
         }
 
-        guard let dbCountry = countriesDatasource.getCountryByName(country),
-            let preAuthCountries = preference.preAuthResponse?.widget?
-                .countries,
-            preAuthCountries.isNotEmpty,
-            preAuthCountries.contains(dbCountry.iso2)
-        else {
+        guard let dbCountry = countriesDatasource.getCountryByName(country) else {
+            initializationDidFail()
+            return
+        }
+        var preAuthCountries = preference.preAuthResponse?.widget?.countries ?? []
+        if preAuthCountries.isEmpty {
+            preAuthCountries = ["NG"]
+        }
+        guard preAuthCountries.contains(dbCountry.iso2) else {
             viewProtocol?.showCountryNotSupportedError()
             return
         }
@@ -430,3 +433,4 @@ final class SDKInitViewModel {
         )
     }
 }
+

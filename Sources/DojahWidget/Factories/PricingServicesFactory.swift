@@ -50,6 +50,8 @@ final class PricingServicesFactory {
             return [pricingConfig.id.idDefault.orEmpty]
         case .businessID:
             return [pricingConfig.businessID.idDefault.orEmpty]
+        case .customQuestions:
+            return []
         }
         return []
     }

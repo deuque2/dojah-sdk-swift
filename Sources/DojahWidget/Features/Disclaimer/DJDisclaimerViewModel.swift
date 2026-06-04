@@ -14,7 +14,11 @@ final class DJDisclaimerViewModel: BaseViewModel {
     }
     
     func checkSupportedCountry() {
-        guard let countries = preference.preAuthResponse?.widget?.countries, countries.isNotEmpty, countries.contains(preference.DJIPCountry) else {
+        let countries = preference.preAuthResponse?.widget?.countries ?? [preference.DJIPCountry]
+        
+        guard !countries.isEmpty,
+              (countries.isEmpty ? [preference.DJIPCountry] : countries).contains(preference.DJIPCountry)
+        else {
             showCountryNotSupportedError()
             return
         }

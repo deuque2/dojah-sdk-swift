@@ -23,4 +23,5 @@ enum DJPageName: String, Codable {
     case index
     case idOptions = "id-options"
     case signature
+    case customQuestions = "custom-questions"
 }
