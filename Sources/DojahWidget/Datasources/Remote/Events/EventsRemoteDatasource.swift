@@ -8,6 +8,7 @@
 import Foundation
 
 struct EventsRemoteDatasource: EventsRemoteDatasourceProtocol {
+    
     private let service: NetworkServiceProtocol
     
     init(service: NetworkServiceProtocol = NetworkService()) {
@@ -15,6 +16,19 @@ struct EventsRemoteDatasource: EventsRemoteDatasourceProtocol {
     }
     
     func postEvent(request: DJEventRequest, completion: @escaping DJResultAction<SuccessEntityResponse>) {
+        service.makeRequest(
+            responseType: SuccessEntityResponse.self,
+            requestMethod: .post,
+            remotePath: .events,
+            parameters: request.dictionary,
+            headers: nil,
+            completion: completion
+        )
+    }
+    
+    func postCustomQuestionsEvent(
+        request: DJCustomQuestionEventRequest,
+        completion: @escaping DJResultAction<SuccessEntityResponse>) {
         service.makeRequest(
             responseType: SuccessEntityResponse.self,
             requestMethod: .post,

@@ -11,4 +11,6 @@ protocol EventsRemoteDatasourceProtocol {
     func postEvent(request: DJEventRequest, completion: @escaping DJResultAction<SuccessEntityResponse>)
     
     func postEmailCollectedEvent(request: DJEventRequest, completion: @escaping DJResultAction<EntityResponse<EmailCollectedEventResponse>>)
+    
+    func postCustomQuestionsEvent(request: DJCustomQuestionEventRequest, completion: @escaping DJResultAction<SuccessEntityResponse>)
 }
