@@ -43,6 +43,8 @@ enum DJGovernmentIDType: String, Codable {
         switch self {
         case .bvn:
             return .bvnLookup
+        case .bvnAdvance:
+            return .bvnAdvanceLookup
         case .nin:
             return .ninLookup
         case .vnin:
@@ -56,7 +58,7 @@ enum DJGovernmentIDType: String, Codable {
     
     var lookupParameterKeyName: String {
         switch self {
-        case .bvn:
+        case .bvn, .bvnAdvance:
             return "bvn"
         case .nin:
             return "nin"

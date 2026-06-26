@@ -24,7 +24,7 @@ struct DJPageQuestion: Codable, Equatable {
 }
 
 struct DJPageConfig: Codable {
-    let bvn, dl, vnin, nin: Bool?
+    let bvn, bvnAdvance, dl, vnin, nin: Bool?
     let liveLocation, utilityBill, hideUpload: Bool?
     let otp, selfie, cac, tin, whatsappVerification, whatsappOtp,
         verification: Bool?
@@ -46,7 +46,7 @@ struct DJPageConfig: Codable {
     let titleText: String?
 
     enum CodingKeys: String, CodingKey {
-        case bvn, dl, vnin, nin
+        case bvn, dl, vnin, nin, bvnAdvance
         case liveLocation, utilityBill, hideUpload
         case otp, selfie, cac, tin, verification, whatsappVerification, whatsappOtp
         case passport, voter, national
@@ -71,6 +71,7 @@ struct DJPageConfig: Codable {
 
     init(
         bvn: Bool? = nil,
+        bvnAdvance: Bool? = nil,
         dl: Bool? = nil,
         vnin: Bool? = nil,
         liveLocation: Bool? = nil,
@@ -110,6 +111,7 @@ struct DJPageConfig: Codable {
         titleText: String? = nil
     ) {
         self.bvn = bvn
+        self.bvnAdvance = bvnAdvance
         self.dl = dl
         self.vnin = vnin
         self.nin = nin

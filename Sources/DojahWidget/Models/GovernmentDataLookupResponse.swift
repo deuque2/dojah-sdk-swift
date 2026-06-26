@@ -8,7 +8,7 @@
 import Foundation
 
 struct GovernmentDataLookupEntity: Codable {
-    let customerID, bvn, firstName, lastName, middleName: String?
+    let customerID, bvn, bvnAdvance, firstName, lastName, middleName: String?
     let gender, dateOfBirth, phoneNumber1, image: String?
     let email, enrollmentBank, enrollmentBranch, levelOfAccount: String?
     let lgaOfOrigin, lgaOfResidence, maritalStatus, nameOnCard: String?
@@ -42,7 +42,7 @@ struct GovernmentDataLookupEntity: Codable {
     }
 
     enum CodingKeys: String, CodingKey {
-        case customerID = "customer", bvn
+        case customerID = "customer", bvn, bvnAdvance
         case firstName = "first_name"
         case lastName = "last_name"
         case middleName = "middle_name"

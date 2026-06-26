@@ -115,9 +115,39 @@ final class DJGovernmentDataViewModel: BaseViewModel {
 
     private func lookupGovernmentData() {
         hideMessage()
-        guard let idEnum = selectedGovernmentID?.idEnum,
-            let idType = DJGovernmentIDType(rawValue: idEnum)
-        else { return }
+        guard let idEnum = selectedGovernmentID?.idEnum else { return }
+        var effectiveGovernmentID = selectedGovernmentID
+        var idType: DJGovernmentIDType
+        if idEnum == "BVN", preference.DJAuthStep.config?.bvnAdvance == true {
+            if let govID = selectedGovernmentID {
+                effectiveGovernmentID = DJGovernmentID(
+                    name: govID.name,
+                    abbr: govID.abbr,
+                    subtext: govID.subtext,
+                    subtext2: govID.subtext2,
+                    placeholder: govID.placeholder,
+                    idEnum: govID.idEnum,
+                    spanid: govID.spanid,
+                    inputType: govID.inputType,
+                    inputMode: govID.inputMode,
+                    minLength: govID.minLength,
+                    maxLength: govID.maxLength,
+                    id: govID.id,
+                    value: DJGovernmentIDType.bvnAdvance.rawValue,
+                    idName: govID.idName
+                )
+                
+                selectedGovernmentID = effectiveGovernmentID
+                idType = .bvnAdvance
+            } else {
+                return
+            }
+        } else if let type = DJGovernmentIDType(rawValue: idEnum) {
+            idType = type
+        } else {
+            return
+        }
+        
         governmentDataRemoteDatasource.lookupID(
             number: idNumber,
             idType: idType
@@ -288,3 +318,4 @@ final class DJGovernmentDataViewModel: BaseViewModel {
         )
     }
 }
+

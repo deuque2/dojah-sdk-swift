@@ -16,6 +16,7 @@ enum DJRemotePath {
     case events
     case ninLookup
     case bvnLookup
+    case bvnAdvanceLookup
     case vninLookup
     case basicPhoneNumberLookup
     case advancedPhoneNumberLookup
@@ -52,6 +53,8 @@ enum DJRemotePath {
             return "widget/kyc/nin"
         case .bvnLookup:
             return "widget/kyc/bvn"
+        case .bvnAdvanceLookup:
+            return "widget/kyc/bvn/advance"
         case .vninLookup:
             return "widget/kyc/vnin"
         case .basicPhoneNumberLookup:

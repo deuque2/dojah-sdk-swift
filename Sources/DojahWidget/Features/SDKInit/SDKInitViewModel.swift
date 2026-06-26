@@ -348,7 +348,7 @@ final class SDKInitViewModel {
             }
         }
 
-        kprint(String(describing: steps.dictionaryArray))
+        //kprint(String(describing: steps.dictionaryArray))
 
         return steps.map { $0.dictionary }
     }
