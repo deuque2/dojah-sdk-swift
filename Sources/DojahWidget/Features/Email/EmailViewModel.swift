@@ -41,6 +41,7 @@ final class EmailViewModel: BaseViewModel {
     func setupPreAuthEmailAddress() {
         if(preference.preAuthEmailAddress != nil && preference.preAuthEmailAddress.isNotEmpty) {
             viewProtocol?.prefillEmail(email: preference.preAuthEmailAddress)
+            self.didTapContinue(email: preference.preAuthEmailAddress)
         }
     }
     

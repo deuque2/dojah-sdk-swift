@@ -75,9 +75,6 @@ final class EmailViewController: DJBaseViewController {
 
 extension EmailViewController: EmailViewProtocol {
     func prefillEmail(email: String) {
-        
-        print("-------> email --->  ")
-        print(email)
         emailTextField.textField.text = email
         emailTextField.textField.isEnabled = false
     }

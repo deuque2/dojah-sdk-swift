@@ -38,70 +38,20 @@ final class SelfieVideoKYCViewModel: BaseViewModel {
         super.init()
     }
     
-    func analyseImage() {
-        guard let imageData else { return }
-        showLoader?(true)
-        let params = [
-            "image": imageData.base64EncodedString().encrypted(),
-            "image_type": "selfie" //pass 'id' for government-issued-id
-        ]
-        imageAnalysisTries += 1
-        remoteDatasource.performImageAnalysis(params: params) { [weak self] result in
-            switch result {
-            case let .success(response):
-                self?.didGetImageAnalysisResponse(response)
-            case let .failure(error):
-                self?.imageAnalysisOrCheckDidFail(error: error)
-            }
-        }
-    }
-    
-    private func didGetImageAnalysisResponse(_ response: EntityResponse<ImageAnalysisResponse>) {
-        //[.governmentDataVerification, .governmentData].contains(preference.DJAuthStep.name)
-        guard let analysisResponse = response.entity else {
-            showLoader?(false)
-            viewProtocol?.showSelfieImageError(message: DJConstants.genericErrorMessage)
-            return
-        }
-        
-        if analysisResponse.face?.faceDetected == false {
-            showLoader?(false)
-            viewProtocol?.showSelfieImageError(message: "No face detected")
-            return
-        }
-        
-        if analysisResponse.face?.multifaceDetected == true {
-            showLoader?(false)
-            viewProtocol?.showSelfieImageError(message: "Multiple faces detected")
-            return
-        }
-        
-        if analysisResponse.face?.quality?.brightness ?? 0 <= preference.DJAuthStep.config?.brightnessThreshold ?? 40 {
-            showLoader?(false)
-            viewProtocol?.showSelfieImageError(message: "Not bright enough. Please move to a brighter area")
-            return
-        }
-        
-//        if preference.DJAuthStep.config?.glassesCheck ?? true !=
-//            (analysisResponse.face?.details?.eyeglasses?.value ?? false || analysisResponse.face?.details?.sunglasses?.value ?? false) {
-//            showLoader?(false)
-//            viewProtocol?.showSelfieImageError(message: "Glasses detected. Retake selfie without your glasses")
-//            return
-//        }
-        
-        performImageCheck()
-    }
-    
     private func imageAnalysisOrCheckDidFail(error: DJSDKError) {
         postCheckFailedEvent()
-        if error == .imageCheckOrAnalysisError {
-            viewProtocol?.showSelfieImageError(message: DJSDKError.selfieVideoCouldNotBeCaptured.uiMessage)
-        } else {
-            viewProtocol?.showSelfieImageError(message: error.uiMessage)
+        
+        runAfter { [weak self] in
+            self?.setNextAuthStep()
         }
+//        if error == .imageCheckOrAnalysisError {
+//            viewProtocol?.showSelfieImageError(message: DJSDKError.selfieVideoCouldNotBeCaptured.uiMessage)
+//        } else {
+//            viewProtocol?.showSelfieImageError(message: error.uiMessage)
+//        }
     }
     
-    private func performImageCheck() {
+    func performImageCheck() {
         imageCheckMaxTries += 1
         guard let imageData else { return }
         let params: DJParameters = [
@@ -112,6 +62,7 @@ final class SelfieVideoKYCViewModel: BaseViewModel {
             "doc_type": "image",
             "continue_verification": imageAnalysisTries >= Constants.imageAnalysisMaxTries
         ]
+        showLoader?(true)
         remoteDatasource.performImageCheck(params: params) { [weak self] result in
             switch result {
             case let .success(response):
@@ -134,7 +85,10 @@ final class SelfieVideoKYCViewModel: BaseViewModel {
         guard let checkResponse = response.entity else {
             showLoader?(false)
             postCheckFailedEvent()
-            viewProtocol?.showSelfieImageError(message: DJSDKError.selfieVideoCouldNotBeCaptured.uiMessage)
+            
+            runAfter { [weak self] in
+                self?.setNextAuthStep()
+            }
             return
         }
         
@@ -157,13 +111,13 @@ final class SelfieVideoKYCViewModel: BaseViewModel {
                     showLoader: false,
                     showError: false
                 )
-                runAfter { [weak self] in
-                    self?.setNextAuthStep()
-                }
             }
             postCheckFailedEvent()
-            viewProtocol?.showSelfieImageError(message: checkResponse.reason ?? "Selfie verification failed")
+            runAfter { [weak self] in
+                self?.setNextAuthStep()
+            }
         }
+    
     }
     
     private func postCheckFailedEvent() {

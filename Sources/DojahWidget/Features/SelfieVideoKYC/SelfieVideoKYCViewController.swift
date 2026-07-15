@@ -7,6 +7,13 @@
 
 import UIKit
 import AVFoundation
+import ImageIO
+import Vision
+
+#if canImport(MLKitFaceDetection) && canImport(MLKitVision)
+import MLKitFaceDetection
+import MLKitVision
+#endif
 
 final class SelfieVideoKYCViewController: DJBaseViewController {
 
@@ -14,7 +21,26 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
     //private var viewState = SelfieVideoKYCViewState.capture
     private let captureSession = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
+    private let videoOutput = AVCaptureVideoDataOutput()
+    private let faceDetectionQueue = DispatchQueue(label: "com.dojah.selfie-video-kyc.face-detection")
     private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var countdownTimer: Timer?
+    private var countdownValue = 0
+    private var currentFaceGuidance: FaceCaptureGuidance?
+    private var didAutoCaptureSelfie = false
+    private var isFaceDetectionActive = false
+
+#if canImport(MLKitFaceDetection) && canImport(MLKitVision)
+    private lazy var faceDetector: FaceDetector = {
+        let options = FaceDetectorOptions()
+        options.performanceMode = .fast
+        options.landmarkMode = .none
+        options.contourMode = .none
+        options.classificationMode = .none
+        options.minFaceSize = 0.15
+        return FaceDetector.faceDetector(options: options)
+    }()
+#endif
 
     init(viewModel: SelfieVideoKYCViewModel = SelfieVideoKYCViewModel()) {
         self.viewModel = viewModel
@@ -37,43 +63,63 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
         textColor: .white,
         bgColor: .black
     )
-    private lazy var cameraBorderViewWidth = view.width - 100
-    private lazy var cameraContainerViewWidth = cameraBorderViewWidth - 30
-    private lazy var cameraViewWidth = cameraBorderViewWidth - 32
+    private let cameraPreviewWidth: CGFloat = 285
+    private let cameraPreviewHeight: CGFloat = 360
+    private lazy var selfiePreviewWidth = cameraPreviewWidth * 0.8
+    private lazy var selfiePreviewHeight = cameraPreviewHeight * 0.8
+    private lazy var cameraGuideWidth = cameraPreviewWidth * 0.84
+    private lazy var cameraGuideHeight = cameraGuideWidth * (268.0 / 216.0)
     private lazy var cameraContainerView = UIView(
-        size: cameraContainerViewWidth,
-        backgroundColor: .djBorder.withAlphaComponent(0.3),
-        radius: cameraContainerViewWidth / 2,
+        height: cameraPreviewHeight,
+        width: cameraPreviewWidth,
+        backgroundColor: .clear,
+        radius: cameraPreviewWidth / 2,
         clipsToBounds: false
     )
     private lazy var cameraView = UIView(
-        size: cameraViewWidth,
+        height: cameraPreviewHeight,
+        width: cameraPreviewWidth,
         backgroundColor: .djBorder.withAlphaComponent(0.3),
-        radius: cameraViewWidth / 2,
+        radius: cameraPreviewWidth / 2,
         clipsToBounds: true
     )
     private lazy var cameraBorderView = UIView(
-        size: cameraBorderViewWidth,
-        radius: cameraBorderViewWidth / 2,
+        height: cameraPreviewHeight,
+        width: cameraPreviewWidth,
+        backgroundColor: .clear,
         clipsToBounds: false
     )
     private lazy var cameraBorderStackView = cameraBorderView.withHStackCentering()
     private lazy var selfieImageView = UIImageView(
         image: .res("femaleSelfie"),
         contentMode: .scaleAspectFill,
-        size: cameraViewWidth,
-        cornerRadius: cameraViewWidth / 2
+        height: selfiePreviewHeight,
+        width: selfiePreviewWidth,
+        cornerRadius: selfiePreviewWidth / 2
     )
-    private let bottomHintView = PillIconTextView(
-        text: "Please make sure you are in a well lit environment",
-        font: .light(13),
-        icon: .res("redInfoCircle"),
-        iconSize: 18,
-        textColor: .djRed,
-        bgColor: .djLightRed,
-        cornerRadius: 15
+    private lazy var cameraGuideImageView = UIImageView(
+        image: .res(FaceCaptureGuidance.centerFace.assetName),
+        contentMode: .scaleAspectFit,
+        height: cameraGuideHeight,
+        width: cameraGuideWidth
     )
-    private lazy var bottomHintStackView = bottomHintView.withHStackCentering()
+    private lazy var countdownLabel = UILabel(
+        text: "",
+        font: .bold(76),
+        numberOfLines: 1,
+        color: .systemGreen,
+        alignment: .center
+    )
+    // private let bottomHintView = PillIconTextView(
+    //     text: "Please make sure you are in a well lit environment",
+    //     font: .light(13),
+    //     icon: .res("redInfoCircle"),
+    //     iconSize: 18,
+    //     textColor: .djRed,
+    //     bgColor: .djLightRed,
+    //     cornerRadius: 15
+    // )
+    //private lazy var bottomHintStackView = bottomHintView.withHStackCentering()
     private let disclaimerItemsView = DisclaimerItemsView(items: DJConstants.selfieCaptureDisclaimerItems)
     private lazy var primaryButton = DJButton(
         title: "\(viewModel.verificationMethod.kycText)",
@@ -93,17 +139,18 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
     }
     private lazy var selfieImageStackView = selfieImageView.withHStackCentering()
     private lazy var contentStackView = VStackView(
-        subviews: [topHintView.withHStackCentering(), cameraBorderStackView, bottomHintStackView,
+        subviews: [topHintView.withHStackCentering(), cameraBorderStackView,
                    disclaimerItemsView, secondaryButton, primaryButton],
         spacing: 40
     )
     private lazy var contentScrollView = UIScrollView(children: [contentStackView])
-    private var cameraContainerLayer: CAShapeLayer?
-    private var cameraBorderLayer: CAShapeLayer?
-    private var isCaptureCameraBorders = true
     private var selfieImageBlurEffectView: UIVisualEffectView?
     private var viewState: SelfieVideoKYCViewState {
         viewModel.viewState
+    }
+    deinit {
+        countdownTimer?.invalidate()
+        videoOutput.setSampleBufferDelegate(nil, queue: nil)
     }
 
     public override func viewDidLoad() {
@@ -117,6 +164,12 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
         runAfter { [weak self] in
             self?.setBorders()
         }
+    }
+
+    override func viewWillDisappear(_ animated: Bool) {
+        super.viewWillDisappear(animated)
+        resetFaceCaptureCountdown()
+        startCaptureSession(false)
     }
 
     private func setupUI() {
@@ -144,17 +197,25 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
             contentStackView.setCustomSpacing(20, after: disclaimerItemsView)
         }
 
-        [disclaimerItemsView, secondaryButton].showViews(false)
+        [disclaimerItemsView, secondaryButton, primaryButton].showViews(false)
 
         attachmentManager.imagePickedHandler = { [weak self] uiimage, imageURL, sourceType in
             self?.didPickImage(uiimage, at: imageURL, using: sourceType)
         }
 
-        cameraBorderView.addSubview(cameraContainerView)
+        cameraBorderView.addSubviews(cameraContainerView, cameraGuideImageView, countdownLabel)
         cameraContainerView.centerInSuperview()
+        cameraGuideImageView.centerInSuperview()
         cameraContainerView.addSubviews(selfieImageView, cameraView, cameraHintView)
-        [cameraView, selfieImageView, cameraHintView].centerInSuperview()
+        [cameraView, selfieImageView].centerInSuperview()
+        cameraHintView.centerXInSuperview()
+        cameraHintView.anchor(bottom: cameraContainerView.bottomAnchor, padding: .kinit(bottom: 18))
+        cameraHintView.leadingAnchor.constraint(greaterThanOrEqualTo: cameraContainerView.leadingAnchor, constant: 12).isActive = true
+        cameraHintView.trailingAnchor.constraint(lessThanOrEqualTo: cameraContainerView.trailingAnchor, constant: -12).isActive = true
+        countdownLabel.centerInSuperview(size: .init(width: 150, height: 110))
         selfieImageView.showView(false)
+        countdownLabel.showView(false)
+        cameraGuideImageView.showView()
 
         runAfter { [weak self] in
             self?.setupCameraView()
@@ -172,17 +233,22 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
             let input = try AVCaptureDeviceInput(device: frontCamera)
 
             if captureSession.canAddInput(input) && captureSession.canAddOutput(photoOutput) {
+                captureSession.beginConfiguration()
+                captureSession.sessionPreset = .high
                 captureSession.addInput(input)
                 captureSession.addOutput(photoOutput)
+                setupFaceDetectionVideoOutput()
+                captureSession.commitConfiguration()
 
                 previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
                 previewLayer?.videoGravity = .resizeAspectFill
                 guard let previewLayer else { return }
-                primaryButton.enable()
+                primaryButton.enable(!isFaceDetectionActive)
                 cameraHintView.showView(false)
                 cameraView.clearBackground()
                 previewLayer.frame = cameraView.layer.bounds
                 cameraView.layer.insertSublayer(previewLayer, at: 0)
+                updateCameraConnectionOrientation()
 
                 startCaptureSession()
             }
@@ -191,39 +257,46 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
         }
     }
 
-    private func setBorders() {
-        if isCaptureCameraBorders {
-            if let cameraBorderLayer {
-                removeLayer(cameraBorderLayer, from: cameraBorderView)
-            }
-            if let cameraContainerLayer {
-                removeLayer(cameraContainerLayer, from: cameraContainerView)
-            }
-            cameraContainerLayer = setDashedBorder(
-                on: cameraContainerView,
-                lineWidth: 2,
-                strokeColor: .primary
-            )
-            cameraBorderLayer = setDashedBorder(
-                on: cameraBorderView,
-                dashLength: 4,
-                dashSpacing: 8,
-                lineWidth: 10,
-                lineDashPhase: 2,
-                strokeColor: .djBorder
-            )
+    private func setupFaceDetectionVideoOutput() {
+        videoOutput.videoSettings = [
+            kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA
+        ]
+        videoOutput.alwaysDiscardsLateVideoFrames = true
+        videoOutput.setSampleBufferDelegate(self, queue: faceDetectionQueue)
+        if captureSession.canAddOutput(videoOutput) {
+            captureSession.addOutput(videoOutput)
+            isFaceDetectionActive = true
         } else {
-            removeLayer(cameraContainerLayer, from: cameraContainerView)
-            removeLayer(cameraBorderLayer, from: cameraBorderView)
-            cameraBorderLayer = setDashedBorder(
-                on: cameraBorderView,
-                dashLength: 6,
-                dashSpacing: 6,
-                lineWidth: 4,
-                strokeColor: .djGreen
-            )
+            isFaceDetectionActive = false
         }
+    }
 
+    private func updateCameraConnectionOrientation() {
+        configureCameraConnection(previewLayer?.connection)
+        configureCameraConnection(videoOutput.connection(with: .video))
+    }
+
+    private func configureCameraConnection(_ connection: AVCaptureConnection?) {
+        guard let connection else { return }
+        connection.videoOrientation = .portrait
+        if connection.isVideoMirroringSupported {
+            connection.automaticallyAdjustsVideoMirroring = false
+            connection.isVideoMirrored = true
+        }
+    }
+
+    private func setBorders() {
+        previewLayer?.frame = cameraView.layer.bounds
+        applyOvalMask(to: cameraView)
+        applyOvalMask(to: selfieImageView)
+        cameraGuideImageView.image = .res(currentFaceGuidance?.assetName ?? FaceCaptureGuidance.centerFace.assetName)
+    }
+
+    private func applyOvalMask(to view: UIView) {
+        guard view.bounds != .zero else { return }
+        let maskLayer = CAShapeLayer()
+        maskLayer.path = UIBezierPath(ovalIn: view.bounds).cgPath
+        view.layer.mask = maskLayer
     }
 
     private func didPickImage(
@@ -231,9 +304,10 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
         at imageURL: URL?,
         using sourceType: UIImagePickerController.SourceType
     ) {
+        resetFaceCaptureCountdown()
         selfieImageView.image = uiimage
         [disclaimerItemsView, secondaryButton].showViews()
-        [topHintView, bottomHintView].showViews(false)
+        [topHintView].showViews(false)
         updateViewState()
     }
 
@@ -254,27 +328,44 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
     private func updateUIState() {
         primaryButton.title = viewState.primaryButtonTitle
         topHintView.text = viewState.hintText
-        isCaptureCameraBorders = [.capture, .record].contains(viewState)
 
         switch viewState {
         case .capture:
+            didAutoCaptureSelfie = false
+            currentFaceGuidance = nil
+            resetFaceCaptureCountdown()
             cameraView.backgroundColor = .djBorder.withAlphaComponent(0.3)
-            [bottomHintStackView, cameraHintView, cameraView].showViews()
+            topHintView.showView()
+            [cameraView].showViews()
+            cameraHintView.showView(false)
             [disclaimerItemsView, secondaryButton, selfieImageView].showViews(false)
+            cameraGuideImageView.showView()
+            primaryButton.showView(false)
+            primaryButton.enable(!isFaceDetectionActive)
             startCaptureSession()
+            if isFaceDetectionActive {
+                applyFaceCaptureGuidance(.centerFace)
+            }
         case .previewSelfie:
+            resetFaceCaptureCountdown()
             startCaptureSession(false)
-            [bottomHintStackView, cameraHintView, cameraView].showViews(false)
+            [cameraHintView, cameraView, cameraGuideImageView].showViews(false)
             [disclaimerItemsView, secondaryButton, selfieImageView].showViews()
+            primaryButton.showView()
+            primaryButton.enable()
         case .record:
+            resetFaceCaptureCountdown()
             cameraView.backgroundColor = .djBorder.withAlphaComponent(0.3)
-            [bottomHintStackView, cameraHintView, cameraView].showViews()
+            [cameraHintView, cameraView].showViews()
             [disclaimerItemsView, secondaryButton, selfieImageView].showViews(false)
+            primaryButton.showView(false)
             //startCaptureSession() //TODO: do video stuff
         case .previewSelfieVideo:
+            resetFaceCaptureCountdown()
             //startCaptureSession(false) //TODO: do video stuff
-            [bottomHintStackView, cameraHintView, cameraView].showViews(false)
+            [cameraHintView, cameraView, cameraGuideImageView].showViews(false)
             [disclaimerItemsView, secondaryButton, selfieImageView].showViews()
+            primaryButton.showView()
         }
     }
 
@@ -283,7 +374,7 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
         case .capture:
             capturePhoto()
         case .previewSelfie:
-            viewModel.analyseImage()
+            viewModel.performImageCheck()
         case .record:
             break //TODO: do video recording
         case .previewSelfieVideo:
@@ -292,6 +383,9 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
     }
 
     private func didTapSecondaryButton() {
+        didAutoCaptureSelfie = false
+        currentFaceGuidance = nil
+        resetFaceCaptureCountdown()
         updateViewState()
     }
 
@@ -301,38 +395,68 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
         photoOutput.capturePhoto(with: photoSettings, delegate: self)
     }
 
-    @discardableResult
-    private func setDashedBorder(
-        on uiview: UIView,
-        dashLength: NSNumber = 4,
-        dashSpacing: NSNumber = 4,
-        lineWidth: CGFloat = 1,
-        lineDashPhase: CGFloat = 0,
-        strokeColor: UIColor? = .black
-    ) -> CAShapeLayer {
-        let borderLayer = CAShapeLayer()
-        borderLayer.strokeColor = strokeColor?.cgColor
-        borderLayer.lineWidth = lineWidth
-        borderLayer.lineDashPattern = [dashLength, dashSpacing]
-        borderLayer.frame = uiview.bounds
-        borderLayer.lineDashPhase = lineDashPhase
-        borderLayer.fillColor = nil
-        borderLayer.path = UIBezierPath(
-            roundedRect: uiview.bounds,
-            cornerRadius: uiview.layer.cornerRadius
-        ).cgPath
-        uiview.layer.addSublayer(borderLayer)
-        return borderLayer
-    }
-
-    private func removeLayer(_ layer: CAShapeLayer?, from uiview: UIView) {
-        uiview.layer.sublayers?.removeAll { $0 == layer }
-    }
-
     private func startCaptureSession(_ start: Bool = true) {
-        cameraHintView.showView(!start)
+        if start {
+            cameraHintView.showView(false)
+        } else {
+            cameraHintView.showView()
+        }
         runOnBackgroundThread { [weak self] in
             start ? self?.captureSession.startRunning() : self?.captureSession.stopRunning()
+        }
+    }
+
+    private func applyFaceCaptureGuidance(_ guidance: FaceCaptureGuidance) {
+        guard viewState == .capture, !didAutoCaptureSelfie else { return }
+
+        if guidance == .ready {
+            startFaceCaptureCountdown()
+        } else {
+            resetFaceCaptureCountdown()
+        }
+
+        guard guidance != currentFaceGuidance else { return }
+        currentFaceGuidance = guidance
+        topHintView.text = guidance.message
+        topHintView.showView()
+        cameraGuideImageView.image = .res(guidance.assetName)
+        cameraGuideImageView.showView()
+        cameraHintView.showView(false)
+    }
+
+    private func startFaceCaptureCountdown() {
+        guard countdownTimer == nil else { return }
+        countdownValue = 1
+        cameraHintView.showView(false)
+        countdownLabel.text = "\(countdownValue)"
+        countdownLabel.showView()
+
+        countdownTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] timer in
+            guard let self else {
+                timer.invalidate()
+                return
+            }
+            self.countdownValue += 1
+            if self.countdownValue <= 3 {
+                self.countdownLabel.text = "\(self.countdownValue)"
+                return
+            }
+            timer.invalidate()
+            self.countdownTimer = nil
+            self.didAutoCaptureSelfie = true
+            self.countdownLabel.showView(false)
+            self.capturePhoto()
+        }
+    }
+
+    private func resetFaceCaptureCountdown() {
+        countdownTimer?.invalidate()
+        countdownTimer = nil
+        countdownValue = 0
+        countdownLabel.text = ""
+        countdownLabel.showView(false)
+        if viewState == .capture {
+            cameraGuideImageView.showView()
         }
     }
 
@@ -353,6 +477,45 @@ final class SelfieVideoKYCViewController: DJBaseViewController {
 
 }
 
+private enum FaceCaptureGuidance: Equatable {
+    case centerFace
+    case multipleFaces
+    case moveBack
+    case moveCloser
+    case poorLighting
+    case highLighting
+    case ready
+
+    var message: String {
+        switch self {
+        case .centerFace:
+            return "Center your face in the oval"
+        case .ready: return "Capturing..."
+        case .multipleFaces:
+            return "Multiple faces detected"
+        case .moveBack:
+            return "Move back a little."
+        case .moveCloser:
+            return "Move closer to the camera."
+        case .poorLighting:
+            return "Poor lighting. Move to a well-lit environment"
+        case .highLighting:
+            return "High lighting. Move to a balance-lit environment"
+        }
+    }
+
+    var assetName: String {
+        self == .ready ? "ic_camera_face_detected" : "ic_capture_ready"
+    }
+}
+
+private enum FaceCaptureThreshold {
+    static let minimumFaceSizeRatio: CGFloat = 0.30
+    static let maximumFaceSizeRatio: CGFloat = 0.72
+    static let maximumCenterOffsetX: CGFloat = 0.10
+    static let maximumCenterOffsetY: CGFloat = 0.12
+}
+
 extension SelfieVideoKYCViewController: SelfieVideoKYCViewProtocol {
     func showSelfieImageError(message: String) {
         runOnMainThread { [weak self] in
@@ -369,6 +532,235 @@ extension SelfieVideoKYCViewController: SelfieVideoKYCViewProtocol {
             }
         }
     }
+}
+
+extension SelfieVideoKYCViewController: AVCaptureVideoDataOutputSampleBufferDelegate {
+    public func captureOutput(
+        _ output: AVCaptureOutput,
+        didOutput sampleBuffer: CMSampleBuffer,
+        from connection: AVCaptureConnection
+    ) {
+        guard viewState == .capture, isFaceDetectionActive, !didAutoCaptureSelfie else { return }
+
+#if canImport(MLKitFaceDetection) && canImport(MLKitVision)
+        let orientation = imageOrientation(
+            deviceOrientation: UIDevice.current.orientation,
+            cameraPosition: .front
+        )
+        let image = VisionImage(buffer: sampleBuffer)
+        image.orientation = orientation
+
+        do {
+            let faces = try faceDetector.results(in: image)
+            let guidance = faceCaptureGuidance(
+                for: faces,
+                sampleBuffer: sampleBuffer,
+                orientation: orientation
+            )
+            runOnMainThread { [weak self] in
+                self?.applyFaceCaptureGuidance(guidance)
+            }
+        } catch {
+            kprint("Error detecting face: \(error.localizedDescription)")
+            processFaceFrameWithVision(sampleBuffer)
+        }
+#else
+        processFaceFrameWithVision(sampleBuffer)
+#endif
+    }
+
+    private func processFaceFrameWithVision(_ sampleBuffer: CMSampleBuffer) {
+        guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
+
+        let request = VNDetectFaceRectanglesRequest()
+        let handler = VNImageRequestHandler(
+            cvPixelBuffer: imageBuffer,
+            orientation: cgImagePropertyOrientation(
+                deviceOrientation: UIDevice.current.orientation,
+                cameraPosition: .front
+            ),
+            options: [:]
+        )
+
+        do {
+            try handler.perform([request])
+            let guidance = faceCaptureGuidance(
+                for: request.results ?? [],
+                sampleBuffer: sampleBuffer
+            )
+            runOnMainThread { [weak self] in
+                self?.applyFaceCaptureGuidance(guidance)
+            }
+        } catch {
+            kprint("Error detecting face with Vision fallback: \(error.localizedDescription)")
+        }
+    }
+
+    private func faceCaptureGuidance(
+        for faces: [VNFaceObservation],
+        sampleBuffer: CMSampleBuffer
+    ) -> FaceCaptureGuidance {
+        if let brightnessValue = brightnessValue(from: sampleBuffer) {
+            if brightnessValue < -1.2 {
+                return .poorLighting
+            }
+            if brightnessValue > 3.8 {
+                return .highLighting
+            }
+        }
+
+        guard !faces.isEmpty else {
+            return .centerFace
+        }
+        guard faces.count == 1, let face = faces.first else {
+            return .multipleFaces
+        }
+
+        let boundingBox = face.boundingBox
+        let largestFaceSideRatio = max(boundingBox.width, boundingBox.height)
+        let smallestFaceSideRatio = min(boundingBox.width, boundingBox.height)
+
+        if largestFaceSideRatio > FaceCaptureThreshold.maximumFaceSizeRatio {
+            return .moveBack
+        }
+        if smallestFaceSideRatio < FaceCaptureThreshold.minimumFaceSizeRatio {
+            return .moveCloser
+        }
+
+        let centerOffsetX = abs(boundingBox.midX - 0.5)
+        let centerOffsetY = abs(boundingBox.midY - 0.5)
+        if centerOffsetX > FaceCaptureThreshold.maximumCenterOffsetX ||
+            centerOffsetY > FaceCaptureThreshold.maximumCenterOffsetY {
+            return .centerFace
+        }
+
+        return .ready
+    }
+
+    private func brightnessValue(from sampleBuffer: CMSampleBuffer) -> Double? {
+        guard
+            let metadata = CMGetAttachment(
+                sampleBuffer,
+                key: kCGImagePropertyExifDictionary,
+                attachmentModeOut: nil
+            ) as? [String: Any],
+            let brightnessValue = metadata[kCGImagePropertyExifBrightnessValue as String] as? NSNumber
+        else {
+            return nil
+        }
+        return brightnessValue.doubleValue
+    }
+
+    private func cgImagePropertyOrientation(
+        deviceOrientation: UIDeviceOrientation,
+        cameraPosition: AVCaptureDevice.Position
+    ) -> CGImagePropertyOrientation {
+        switch deviceOrientation {
+        case .portrait:
+            return cameraPosition == .front ? .leftMirrored : .right
+        case .landscapeLeft:
+            return cameraPosition == .front ? .downMirrored : .up
+        case .portraitUpsideDown:
+            return cameraPosition == .front ? .rightMirrored : .left
+        case .landscapeRight:
+            return cameraPosition == .front ? .upMirrored : .down
+        case .faceDown, .faceUp, .unknown:
+            return cameraPosition == .front ? .leftMirrored : .right
+        @unknown default:
+            return cameraPosition == .front ? .leftMirrored : .right
+        }
+    }
+
+#if canImport(MLKitFaceDetection) && canImport(MLKitVision)
+    private func faceCaptureGuidance(
+        for faces: [Face],
+        sampleBuffer: CMSampleBuffer,
+        orientation: UIImage.Orientation
+    ) -> FaceCaptureGuidance {
+        if let brightnessValue = brightnessValue(from: sampleBuffer) {
+            if brightnessValue < -1.2 {
+                return .poorLighting
+            }
+            if brightnessValue > 3.8 {
+                return .highLighting
+            }
+        }
+
+        guard !faces.isEmpty else {
+            return .centerFace
+        }
+        guard faces.count == 1, let face = faces.first else {
+            return .multipleFaces
+        }
+
+        let imageSize = imageSize(from: sampleBuffer, orientation: orientation)
+        guard imageSize.width > 0, imageSize.height > 0 else {
+            return .centerFace
+        }
+
+        let widthRatio = face.frame.width / imageSize.width
+        let heightRatio = face.frame.height / imageSize.height
+        let largestFaceSideRatio = max(widthRatio, heightRatio)
+        let smallestFaceSideRatio = min(widthRatio, heightRatio)
+
+        if largestFaceSideRatio > FaceCaptureThreshold.maximumFaceSizeRatio {
+            return .moveBack
+        }
+        if smallestFaceSideRatio < FaceCaptureThreshold.minimumFaceSizeRatio {
+            return .moveCloser
+        }
+
+        let normalizedCenterX = face.frame.midX / imageSize.width
+        let normalizedCenterY = face.frame.midY / imageSize.height
+        let centerOffsetX = abs(normalizedCenterX - 0.5)
+        let centerOffsetY = abs(normalizedCenterY - 0.5)
+        if centerOffsetX > FaceCaptureThreshold.maximumCenterOffsetX ||
+            centerOffsetY > FaceCaptureThreshold.maximumCenterOffsetY {
+            return .centerFace
+        }
+
+        return .ready
+    }
+
+    private func imageSize(
+        from sampleBuffer: CMSampleBuffer,
+        orientation: UIImage.Orientation
+    ) -> CGSize {
+        guard let imageBuffer = CMSampleBufferGetImageBuffer(sampleBuffer) else {
+            return .zero
+        }
+
+        let width = CGFloat(CVPixelBufferGetWidth(imageBuffer))
+        let height = CGFloat(CVPixelBufferGetHeight(imageBuffer))
+
+        switch orientation {
+        case .left, .leftMirrored, .right, .rightMirrored:
+            return .init(width: height, height: width)
+        default:
+            return .init(width: width, height: height)
+        }
+    }
+
+    private func imageOrientation(
+        deviceOrientation: UIDeviceOrientation,
+        cameraPosition: AVCaptureDevice.Position
+    ) -> UIImage.Orientation {
+        switch deviceOrientation {
+        case .portrait:
+            return cameraPosition == .front ? .leftMirrored : .right
+        case .landscapeLeft:
+            return cameraPosition == .front ? .downMirrored : .up
+        case .portraitUpsideDown:
+            return cameraPosition == .front ? .rightMirrored : .left
+        case .landscapeRight:
+            return cameraPosition == .front ? .upMirrored : .down
+        case .faceDown, .faceUp, .unknown:
+            return cameraPosition == .front ? .leftMirrored : .right
+        @unknown default:
+            return cameraPosition == .front ? .leftMirrored : .right
+        }
+    }
+#endif
 }
 
 extension SelfieVideoKYCViewController: AVCapturePhotoCaptureDelegate {
