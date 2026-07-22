@@ -108,10 +108,9 @@ final class AddressVerificationViewController: DJBaseViewController {
         if(address != nil){
             locationManager.didUpdateLocation = { [weak self] location in
                 self?.viewModel.currentLocation = location
-                if(self?.isManualAddressLaunched == false){
+                if(self?.isManualAddressLaunched == false) {
                     self?.viewModel.sendManualAddress(address:  address!, lga: "", landmark: "")
                     self?.isManualAddressLaunched = true
-
                 }
             }
         }

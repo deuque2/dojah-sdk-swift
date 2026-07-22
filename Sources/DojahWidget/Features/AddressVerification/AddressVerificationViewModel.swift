@@ -128,6 +128,7 @@ final class AddressVerificationViewModel: BaseViewModel {
     private func didSendUserSelectedAddress(_ response: SuccessEntityResponse) {
         guard response.entity?.success == true else {
             postStepEvent(name: .stepFailed)
+            
             showErrorMessage(response.entity?.msg ?? "Unable to submit address, please try again.")
             return
         }
@@ -177,7 +178,7 @@ final class AddressVerificationViewModel: BaseViewModel {
             tmpCurrentLocation = currentLocation
         }
     
-        if(tmpCurrentLocation.isNotNil){
+        if(tmpCurrentLocation.isNotNil) {
             // we want to check if the device coordinates and the coordinates of the address
             // the user selected on google places are within 50meters of each other and set
             // the value of 'match' based on that
@@ -201,10 +202,17 @@ final class AddressVerificationViewModel: BaseViewModel {
                     }
                     else {
                         self?.postStepEvent(name: .stepFailed)
+                        runAfter { [weak self] in
+                            self?.setNextAuthStep()
+                        }
                     }
                 case let .failure(error):
                     self?.postStepEvent(name: .stepFailed)
-                    self?.showErrorMessage(error.uiMessage)
+                    
+                    runAfter { [weak self] in
+                        self?.setNextAuthStep()
+                    }
+                    //self?.showErrorMessage(error.uiMessage)
                 }
             }
             
